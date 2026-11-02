@@ -4,6 +4,7 @@
 **/out-tsc/
 **/.angular/
 **/.nx/
+**/src/config/
 
 # Variables de entorno locales
 **/.env
@@ -17,4 +18,5 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
 
