@@ -1,0 +1,346 @@
+:host {
+  display: block;
+}
+
+.portal-wrapper {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+.portal-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.portal-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.portal-banner h1 {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 6px 0;
+  color: #0f172a;
+}
+
+.portal-banner p {
+  font-size: 13.5px;
+  color: #475569;
+  margin: 0;
+}
+
+.mono {
+  font-family: monospace;
+  font-weight: 700;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.student-selector {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  min-width: 260px;
+}
+
+.student-selector label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4338ca;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.student-selector select {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: transparent;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sum-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sum-icon.indigo { background: #eef2ff; color: #4f46e5; }
+.sum-icon.emerald { background: #ecfdf5; color: #059669; }
+.sum-icon.amber { background: #fffbeb; color: #d97706; }
+.sum-icon.sky { background: #f0f9ff; color: #0284c7; }
+
+.sum-label {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.sum-val {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sum-sub {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.portal-tabs {
+  display: inline-flex;
+  gap: 8px;
+  background: #e2e8f0;
+  padding: 5px;
+  border-radius: 14px;
+  margin-bottom: 20px;
+}
+
+.p-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #475569;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.p-tab.active {
+  background: #ffffff;
+  color: #4338ca;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.portal-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.card-title-row {
+  margin-bottom: 18px;
+}
+
+.card-title-row h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.card-title-row p {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.erp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.erp-table th {
+  text-align: left;
+  padding: 12px;
+  background: #f8fafc;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.erp-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.meta-text {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.teacher-name {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.hours-pill {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.grade-cell {
+  font-weight: 700;
+  color: #334155;
+}
+
+.def-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  background: #f1f5f9;
+}
+
+.def-badge.pass { background: #dcfce7; color: #15803d; }
+.def-badge.fail { background: #fee2e2; color: #b91c1c; }
+
+.perf-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.perf-sup { background: #dcfce7; color: #166534; }
+.perf-high { background: #dbeafe; color: #1e40af; }
+.perf-basic { background: #fef9c3; color: #854d0e; }
+.perf-low { background: #fee2e2; color: #991b1b; }
+.perf-pending { background: #f1f5f9; color: #64748b; }
+
+.obs-text {
+  font-size: 12.5px;
+  color: #475569;
+}
+
+/* Horario Semanal del Estudiante */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.day-col {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.day-head {
+  background: #1e1b4b;
+  color: #ffffff;
+  text-align: center;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.day-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 260px;
+}
+
+.schedule-item {
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-left: 4px solid #4f46e5;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.sch-time {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #4f46e5;
+  margin-bottom: 4px;
+}
+
+.sch-subject {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sch-teacher {
+  font-size: 12px;
+  color: #475569;
+  margin-top: 2px;
+}
+
+.sch-room {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.sch-room .material-icons {
+  font-size: 13px;
+}
+
+.empty-slot,
+.empty-msg {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12.5px;
+  padding: 28px 12px;
+}
+
+@media (max-width: 980px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .week-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

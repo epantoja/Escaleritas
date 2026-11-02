@@ -1,41 +1,18 @@
 <div class="admin-layout">
-  <!-- ===================================================================== -->
-  <!-- BARRA SUPERIOR INSTITUCIONAL                                          -->
-  <!-- ===================================================================== -->
-  <header class="topbar">
-    <div class="topbar-brand">
-      <div class="brand-logo">
-        <span class="material-icons">school</span>
-      </div>
-      <div>
-        <h1 class="brand-name">ERP Educativo Escaleritas</h1>
-        <p class="brand-sub">Directorio Escolar y Estructura Académica · Jardín a 5° de Primaria</p>
-      </div>
-    </div>
-
-    <div class="topbar-actions">
-      <a routerLink="/pages/home" class="nav-pill">
-        <span class="material-icons">dashboard</span>
-        <span>Panel Principal</span>
-      </a>
-
-      <div class="user-chip" *ngIf="usuario">
-        <div class="user-info">
-          <span class="user-name">{{ usuario.nombre }} {{ usuario.apellido }}</span>
-          <span class="user-role">{{ usuario.rolNombre || usuario.rol }}</span>
-        </div>
-        <button type="button" class="logout-btn" (click)="cerrarSesion()">
-          <span class="material-icons">logout</span>
-          <span>Salir</span>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- ===================================================================== -->
-  <!-- CONTENIDO PRINCIPAL                                                   -->
-  <!-- ===================================================================== -->
   <main class="admin-container">
+    <!-- ENCABEZADO DEL MÓDULO -->
+    <div class="mb-5">
+      <span class="inline-block px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold uppercase mb-1">
+        Configuración exclusiva Administrador
+      </span>
+      <h1 class="text-2xl font-extrabold text-slate-900 m-0">
+        Configuración de Estudiantes, Docentes y Salones de Clase
+      </h1>
+      <p class="text-sm text-slate-500 mt-1">
+        Administra las matrículas, la planta docente y asigna una docente como Directora de Grupo a cada salón (Jardín a 5°).
+      </p>
+    </div>
+
     <!-- TARJETAS DE INDICADORES RÁPIDOS (KPIs) -->
     <section class="kpi-grid">
       <div class="kpi-card">
@@ -63,7 +40,7 @@
           <span class="material-icons">meeting_room</span>
         </div>
         <div>
-          <span class="kpi-label">Grados (Jardín a 5°)</span>
+          <span class="kpi-label">Salones (Jardín a 5°)</span>
           <strong class="kpi-value">{{ cursos.length }}</strong>
         </div>
       </div>
@@ -104,8 +81,8 @@
         class="module-tab-btn"
         [class.active]="tabActiva === 'CURSOS'"
         (click)="cambiarTab('CURSOS')">
-        <span class="material-icons">account_tree</span>
-        <span>Estructura de Cursos (Jardín a 5°)</span>
+        <span class="material-icons">meeting_room</span>
+        <span>Salones y Directora de Grupo (Jardín a 5°)</span>
       </button>
     </div>
 
@@ -140,7 +117,7 @@
 
         <div class="filter-item">
           <select [(ngModel)]="filtroEstudianteCursoId" (change)="filtrarEstudiantes()">
-            <option value="">Todos los Cursos (Jardín a 5°)</option>
+            <option value="">Todos los Salones (Jardín a 5°)</option>
             <option *ngFor="let c of cursos" [value]="c.id">
               {{ c.nombre }} ({{ c.codigo }})
             </option>
@@ -175,7 +152,7 @@
               <th>Matrícula</th>
               <th>Estudiante</th>
               <th>Documento</th>
-              <th>Grado / Curso</th>
+              <th>Salón / Grado</th>
               <th>Padre / Acudiente</th>
               <th>Estado</th>
               <th class="text-right">Acciones</th>
@@ -258,16 +235,13 @@
       <div class="panel-header">
         <div>
           <h2>Planta Docente y Asignación Académica (Relación N:M)</h2>
-          <p>Registra profesores y asígnales múltiples materias en los diferentes cursos desde Jardín hasta 5° de Primaria.</p>
+          <p>Registra docentes y asígnales materias en los salones desde Jardín hasta 5° de Primaria.</p>
         </div>
         <div class="header-btn-group">
-          <button
-            type="button"
-            class="btn-secondary"
-            (click)="abrirModalNuevaMateria()">
-            <span class="material-icons">library_add</span>
-            <span>Nueva Materia</span>
-          </button>
+          <a routerLink="/pages/materias" class="btn-secondary" style="text-decoration: none;">
+            <span class="material-icons">menu_book</span>
+            <span>Administrar Materias</span>
+          </a>
           <button
             type="button"
             class="btn-emerald"
@@ -291,7 +265,7 @@
 
         <div class="filter-item">
           <select [(ngModel)]="filtroDocenteCursoId" (change)="filtrarDocentes()">
-            <option value="">Filtrar por Grado Asignado (Todos)</option>
+            <option value="">Filtrar por Salón Asignado (Todos)</option>
             <option *ngFor="let c of cursos" [value]="c.id">
               {{ c.nombre }} ({{ c.codigo }})
             </option>
@@ -317,7 +291,7 @@
               <th>Docente</th>
               <th>Documento y Contacto</th>
               <th>Especialidad / Título</th>
-              <th>Carga Académica (Cursos y Materias Asignadas)</th>
+              <th>Carga Académica (Salones y Materias que Enseña)</th>
               <th class="text-right">Acciones</th>
             </tr>
           </thead>
@@ -371,10 +345,10 @@
                   <button
                     type="button"
                     class="btn-assign-inline"
-                    title="Asignar grado y materia al docente"
+                    title="Asignar grado y materia a la docente"
                     (click)="abrirModalAsignarGradoMateria(doc)">
                     <span class="material-icons">add_task</span>
-                    <span>Asignar Grado</span>
+                    <span>Asignar Salón</span>
                   </button>
                   <button
                     type="button"
@@ -405,7 +379,7 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- PESTAÑA 3: ESTRUCTURA DE CURSOS (JARDÍN A 5° DE PRIMARIA)           -->
+    <!-- PESTAÑA 3: SALONES Y ASIGNACIÓN DE DIRECTORA DE GRUPO (JARDÍN A 5°) -->
     <!-- =================================================================== -->
     <section *ngIf="tabActiva === 'CURSOS'" class="courses-section">
       <div class="courses-grid">
@@ -419,7 +393,7 @@
                 {{ c.nivel }} · {{ c.codigo }}
               </span>
               <h3 class="course-title">{{ c.nombre }} (Grupo {{ c.grupo }})</h3>
-              <p class="course-aula">{{ c.aula || 'Aula Principal' }} · Año Lectivo {{ c.anioLectivo }}</p>
+              <p class="course-aula">{{ c.aula || 'Salón Principal' }} · Año Lectivo {{ c.anioLectivo }}</p>
             </div>
             <div class="cupo-circle">
               <strong>{{ c.estudiantes?.length || 0 }}/{{ c.cupoMaximo }}</strong>
@@ -432,23 +406,32 @@
             <div class="progress-fill" [style.width.%]="porcentajeCupo(c)"></div>
           </div>
 
-          <!-- Director de Grupo -->
-          <div class="director-box">
-            <span class="material-icons">supervisor_account</span>
-            <div>
-              <small>Director(a) de Grupo</small>
-              <strong *ngIf="c.directorGrupo; else sinDirector">
-                {{ c.directorGrupo.nombres }} {{ c.directorGrupo.apellidos }}
-              </strong>
-              <ng-template #sinDirector>
-                <span class="muted-text">Pendiente por asignar</span>
-              </ng-template>
+          <!-- Directora de Grupo con botón para asignar/cambiar -->
+          <div class="director-box" style="justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="material-icons">supervisor_account</span>
+              <div>
+                <small>Directora de Grupo del Salón</small>
+                <strong *ngIf="c.directorGrupo; else sinDirector">
+                  Prof. {{ c.directorGrupo.nombres }} {{ c.directorGrupo.apellidos }}
+                </strong>
+                <ng-template #sinDirector>
+                  <span class="muted-text">Pendiente por asignar</span>
+                </ng-template>
+              </div>
             </div>
+            <button
+              type="button"
+              class="btn-assign-inline"
+              (click)="abrirModalDirectoraGrupo(c)">
+              <span class="material-icons">edit_Note</span>
+              <span>{{ c.directorGrupo ? 'Cambiar' : 'Asignar Directora' }}</span>
+            </button>
           </div>
 
           <!-- Materias y Profesores del Curso -->
           <div class="course-teachers">
-            <h4>Docentes y Materias en este Grado ({{ c.asignacionesDocentes?.length || 0 }})</h4>
+            <h4>Docentes y Materias en este Salón ({{ c.asignacionesDocentes?.length || 0 }})</h4>
             <ul *ngIf="c.asignacionesDocentes?.length; else sinDocentesCurso">
               <li *ngFor="let a of c.asignacionesDocentes">
                 <span class="subj-name">{{ a.materia?.nombre }}</span>
@@ -458,7 +441,7 @@
               </li>
             </ul>
             <ng-template #sinDocentesCurso>
-              <p class="muted-text">Aún no se han asignado docentes a este grado.</p>
+              <p class="muted-text">Aún no se han asignado docentes a este salón.</p>
             </ng-template>
           </div>
 
@@ -490,10 +473,10 @@
       </div>
 
       <form [formGroup]="estudianteForm" (ngSubmit)="guardarEstudiante()" class="modal-body" novalidate>
-        <div class="section-divider">1. Ubicación Académica (Grado Escolar)</div>
+        <div class="section-divider">1. Ubicación Académica (Salón / Grado Escolar)</div>
         <div class="form-grid-2">
           <div class="field-group">
-            <label class="field-label">Grado / Curso a Matricular <span class="req">*</span></label>
+            <label class="field-label">Salón / Curso a Matricular <span class="req">*</span></label>
             <div class="input-box">
               <select formControlName="cursoId">
                 <option *ngFor="let c of cursos" [value]="c.id">
@@ -771,13 +754,13 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 3: ASIGNAR DOCENTE A GRADO Y MATERIA (RELACIÓN N:M)             -->
+  <!-- MODAL 3: ASIGNAR DOCENTE A SALÓN Y MATERIA (RELACIÓN N:M)             -->
   <!-- ===================================================================== -->
   <div class="modal-backdrop" *ngIf="mostrarModalAsignacion && docenteSeleccionadoAsignacion">
     <div class="modal-window">
       <div class="modal-header">
         <div>
-          <h3>Asignar Cursos y Materias al Profesor</h3>
+          <h3>Asignar Salones y Materias a la Docente</h3>
           <p>
             Docente: <strong>{{ docenteSeleccionadoAsignacion.nombres }} {{ docenteSeleccionadoAsignacion.apellidos }}</strong>
             ({{ docenteSeleccionadoAsignacion.especialidad }})
@@ -789,7 +772,7 @@
       <form [formGroup]="asignacionForm" (ngSubmit)="guardarAsignacionDocente()" class="modal-body" novalidate>
         <div class="form-grid-2">
           <div class="field-group">
-            <label class="field-label">Seleccionar Grado / Curso (Jardín a 5°) <span class="req">*</span></label>
+            <label class="field-label">Seleccionar Salón / Curso (Jardín a 5°) <span class="req">*</span></label>
             <div class="input-box">
               <select formControlName="cursoId">
                 <option *ngFor="let c of cursos" [value]="c.id">
@@ -822,13 +805,13 @@
           <div class="field-group checkbox-group">
             <label class="checkbox-label">
               <input type="checkbox" formControlName="esTitularCurso" />
-              <span>Designar como <strong>Director(a) de Grupo</strong> de este curso</span>
+              <span>Designar como <strong>Directora de Grupo</strong> de este salón</span>
             </label>
           </div>
         </div>
 
         <div class="current-assignments-box">
-          <h4>Carga Académica Actual del Docente</h4>
+          <h4>Carga Académica Actual de la Docente</h4>
           <div class="assignment-chips" *ngIf="docenteSeleccionadoAsignacion.asignaciones?.length; else sinAsignacionesModal">
             <span
               *ngFor="let a of docenteSeleccionadoAsignacion.asignaciones"
@@ -839,7 +822,7 @@
             </span>
           </div>
           <ng-template #sinAsignacionesModal>
-            <p class="muted-text">Este docente aún no tiene materias ni cursos asignados.</p>
+            <p class="muted-text">Esta docente aún no tiene materias ni salones asignados.</p>
           </ng-template>
         </div>
 
@@ -849,7 +832,7 @@
           </button>
           <button type="submit" class="btn-primary" [disabled]="guardando">
             <span class="material-icons">add_task</span>
-            <span>{{ guardando ? 'Asignando...' : 'Agregar Asignación al Docente' }}</span>
+            <span>{{ guardando ? 'Asignando...' : 'Agregar Asignación a la Docente' }}</span>
           </button>
         </div>
       </form>
@@ -857,59 +840,59 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 4: CREAR NUEVA MATERIA                                          -->
+  <!-- MODAL 4: ASIGNAR DIRECTORA DE GRUPO A UN SALÓN DE CLASE               -->
   <!-- ===================================================================== -->
-  <div class="modal-backdrop" *ngIf="mostrarModalMateria">
+  <div class="modal-backdrop" *ngIf="mostrarModalDirectora && cursoSeleccionadoDirectora">
     <div class="modal-window modal-sm">
       <div class="modal-header">
         <div>
-          <h3>Registrar Nueva Materia / Asignatura</h3>
-          <p>Agrega una asignatura al plan de estudios institucional.</p>
+          <h3>Configurar Salón y Directora de Grupo</h3>
+          <p>
+            Salón: <strong>{{ cursoSeleccionadoDirectora.nombre }} (Grupo {{ cursoSeleccionadoDirectora.grupo }})</strong>
+          </p>
         </div>
-        <button type="button" class="close-btn" (click)="mostrarModalMateria = false">×</button>
+        <button type="button" class="close-btn" (click)="mostrarModalDirectora = false">×</button>
       </div>
 
-      <form [formGroup]="materiaForm" (ngSubmit)="guardarMateria()" class="modal-body" novalidate>
+      <form [formGroup]="directoraSalonForm" (ngSubmit)="guardarDirectoraSalon()" class="modal-body" novalidate>
+        <div class="field-group">
+          <label class="field-label">Docente Directora de Grupo</label>
+          <div class="input-box">
+            <select formControlName="directorDocenteId">
+              <option value="">— Sin Directora de Grupo asignada —</option>
+              <option *ngFor="let d of docentes" [value]="d.id">
+                Prof. {{ d.nombres }} {{ d.apellidos }} ({{ d.especialidad }})
+              </option>
+            </select>
+          </div>
+        </div>
+
         <div class="form-grid-2">
           <div class="field-group">
-            <label class="field-label">Código <span class="req">*</span></label>
+            <label class="field-label">Nombre / Número del Salón <span class="req">*</span></label>
             <div class="input-box">
-              <input type="text" formControlName="codigo" placeholder="Ej. INF-01" />
+              <input type="text" formControlName="aula" placeholder="Ej. Salón 101 - Preescolar" />
             </div>
           </div>
 
           <div class="field-group">
-            <label class="field-label">Intensidad Horaria Semanal <span class="req">*</span></label>
+            <label class="field-label">Cupo Máximo de Estudiantes <span class="req">*</span></label>
             <div class="input-box">
-              <input type="number" min="1" max="20" formControlName="intensidadHoraria" />
+              <input type="number" min="1" max="50" formControlName="cupoMaximo" />
             </div>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Nombre de la Materia <span class="req">*</span></label>
-          <div class="input-box">
-            <input type="text" formControlName="nombre" placeholder="Ej. Tecnología e Informática" />
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Área Académica</label>
-          <div class="input-box">
-            <input type="text" formControlName="area" placeholder="Ej. Tecnología" />
           </div>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn-ghost" (click)="mostrarModalMateria = false">
+          <button type="button" class="btn-ghost" (click)="mostrarModalDirectora = false">
             Cancelar
           </button>
           <button type="submit" class="btn-primary" [disabled]="guardando">
-            <span>Guardar Materia</span>
+            <span class="material-icons">save</span>
+            <span>{{ guardando ? 'Guardando...' : 'Guardar Directora y Salón' }}</span>
           </button>
         </div>
       </form>
     </div>
   </div>
 </div>
-

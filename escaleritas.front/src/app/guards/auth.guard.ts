@@ -41,38 +41,33 @@ export class AuthGuard implements CanActivate, CanActivateChild {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): boolean | UrlTree {
-    // 1. Verificar que el usuario tenga una sesión JWT válida y no expirada
     if (!this.loginService.estaAutenticado()) {
       this.router.navigate(['/login'], { queryParams: { page: state.url } });
       return false;
     }
 
-    // 2. Verificar restricción de Roles en la ruta (ej. data: { roles: ['ADMIN', 'DOCENTE'] })
     const rolesRequeridos = route.data?.['roles'] as RolCodigo[] | undefined;
     if (rolesRequeridos && rolesRequeridos.length > 0) {
       const tieneRolAutorizado = this.loginService.tieneRol(rolesRequeridos);
       if (!tieneRolAutorizado) {
         this.snackBar.openFromComponent(SnackBarAnnotatedComponent, {
           data: {
-            mensajes: `Acceso restringido. Este módulo requiere rol: ${rolesRequeridos.join(' o ')}`,
+            mensajes: `Acceso restringido. Solo el perfil autorizado (${rolesRequeridos.join(', ')}) puede ingresar a esta sección.`,
             accion: 'Entendido',
           },
         });
-        return this.router.createUrlTree(['/pages/home']);
-      }
-    }
 
-    // 3. Verificar restricción de Permisos granulares en la ruta (ej. data: { permisos: ['CALIFICACIONES_EDITAR'] })
-    const permisosRequeridos = route.data?.['permisos'] as string[] | undefined;
-    if (permisosRequeridos && permisosRequeridos.length > 0) {
-      const tienePermisos = this.loginService.tienePermisos(permisosRequeridos);
-      if (!tienePermisos) {
-        this.snackBar.openFromComponent(SnackBarAnnotatedComponent, {
-          data: {
-            mensajes: 'No cuenta con los permisos necesarios para realizar esta operación.',
-            accion: 'Entendido',
-          },
-        });
+        const info = this.loginService.informacionUsuario();
+        if (info?.rol === 'DOCENTE') {
+          return this.router.createUrlTree(['/pages/docentes']);
+        }
+        if (
+          info?.rol === 'PADRE_ESTUDIANTE' ||
+          info?.rol === 'PADRE' ||
+          info?.rol === 'ESTUDIANTE'
+        ) {
+          return this.router.createUrlTree(['/pages/portal-padres']);
+        }
         return this.router.createUrlTree(['/pages/home']);
       }
     }

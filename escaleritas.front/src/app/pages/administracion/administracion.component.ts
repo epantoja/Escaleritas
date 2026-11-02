@@ -53,8 +53,10 @@ export class AdministracionComponent implements OnInit {
   docenteSeleccionadoAsignacion: DocenteModel | null = null;
   asignacionForm!: FormGroup;
 
-  mostrarModalMateria = false;
-  materiaForm!: FormGroup;
+  // Modal para asignar Directora de Grupo a un Salón de Clase
+  mostrarModalDirectora = false;
+  cursoSeleccionadoDirectora: CursoModel | null = null;
+  directoraSalonForm!: FormGroup;
 
   constructor(
     private fb: FormBuilder,
@@ -108,12 +110,10 @@ export class AdministracionComponent implements OnInit {
       esTitularCurso: [false],
     });
 
-    this.materiaForm = this.fb.group({
-      codigo: ['', [Validators.required, Validators.minLength(3)]],
-      nombre: ['', [Validators.required, Validators.minLength(3)]],
-      area: ['Matemáticas', [Validators.required]],
-      intensidadHoraria: [4, [Validators.required, Validators.min(1), Validators.max(20)]],
-      descripcion: [''],
+    this.directoraSalonForm = this.fb.group({
+      directorDocenteId: [''],
+      aula: ['', [Validators.required]],
+      cupoMaximo: [25, [Validators.required, Validators.min(1), Validators.max(50)]],
     });
   }
 
@@ -383,35 +383,47 @@ export class AdministracionComponent implements OnInit {
   }
 
   // ==========================================================================
-  // LÓGICA DE MATERIAS Y CURSOS
+  // ASIGNAR DIRECTORA DE GRUPO A UN SALÓN DE CLASE
   // ==========================================================================
 
-  abrirModalNuevaMateria(): void {
-    this.materiaForm.reset({
-      area: 'Matemáticas',
-      intensidadHoraria: 4,
+  abrirModalDirectoraGrupo(curso: CursoModel): void {
+    this.cursoSeleccionadoDirectora = curso;
+    this.directoraSalonForm.reset({
+      directorDocenteId: curso.directorDocenteId || '',
+      aula: curso.aula || 'Salón Principal',
+      cupoMaximo: curso.cupoMaximo || 25,
     });
-    this.mostrarModalMateria = true;
+    this.mostrarModalDirectora = true;
   }
 
-  guardarMateria(): void {
-    if (this.materiaForm.invalid) {
-      this.materiaForm.markAllAsTouched();
+  guardarDirectoraSalon(): void {
+    if (this.directoraSalonForm.invalid || !this.cursoSeleccionadoDirectora) {
+      this.directoraSalonForm.markAllAsTouched();
       return;
     }
 
     this.guardando = true;
-    this.academicoService.crearMateria(this.materiaForm.value).subscribe({
-      next: (res) => {
-        this.guardando = false;
-        this.mostrarModalMateria = false;
-        this.materias.push(res.materia);
-        this.notificar(res.mensaje);
-      },
-      error: () => {
-        this.guardando = false;
-      },
-    });
+    const { directorDocenteId, aula, cupoMaximo } =
+      this.directoraSalonForm.value;
+
+    this.academicoService
+      .actualizarCurso(this.cursoSeleccionadoDirectora.id, {
+        directorDocenteId: directorDocenteId || null,
+        aula,
+        cupoMaximo: Number(cupoMaximo),
+      })
+      .subscribe({
+        next: (res) => {
+          this.guardando = false;
+          this.mostrarModalDirectora = false;
+          this.notificar(res.mensaje);
+          this.recargarCursos();
+          this.filtrarDocentes();
+        },
+        error: () => {
+          this.guardando = false;
+        },
+      });
   }
 
   private recargarCursos(): void {
@@ -433,10 +445,6 @@ export class AdministracionComponent implements OnInit {
     return Math.min(100, Math.round((ocupados / max) * 100));
   }
 
-  cerrarSesion(): void {
-    this.loginService.logout();
-  }
-
   private notificar(mensaje: string): void {
     this.snackBar.openFromComponent(SnackBarAnnotatedComponent, {
       data: {
@@ -446,4 +454,3 @@ export class AdministracionComponent implements OnInit {
     });
   }
 }
-

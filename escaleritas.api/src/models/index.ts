@@ -8,6 +8,8 @@ import { Materia } from './materia.model';
 import { Docente } from './docente.model';
 import { DocenteCursoMateria } from './docente-curso-materia.model';
 import { Estudiante } from './estudiante.model';
+import { HorarioClase } from './horario-clase.model';
+import { Calificacion } from './calificacion.model';
 
 // ============================================================================
 // 1. DEFINICIÓN DE RELACIONES DE SEGURIDAD RBAC
@@ -60,7 +62,7 @@ Estudiante.belongsTo(Curso, {
   as: 'curso',
 });
 
-// Un Curso tiene un Docente Director de Grupo (1:N opcional)
+// Un Curso tiene una Docente Directora de Grupo (1:N opcional)
 Docente.hasMany(Curso, {
   sourceKey: 'id',
   foreignKey: 'directorDocenteId',
@@ -125,7 +127,7 @@ Materia.belongsToMany(Docente, {
   as: 'docentes',
 });
 
-// Relaciones directas sobre la tabla puente DocenteCursoMateria para consultas enriquecidas
+// Relaciones directas sobre la tabla puente DocenteCursoMateria
 Docente.hasMany(DocenteCursoMateria, {
   sourceKey: 'id',
   foreignKey: 'docenteId',
@@ -163,16 +165,116 @@ DocenteCursoMateria.belongsTo(Materia, {
 });
 
 // ============================================================================
-// 3. SEED DE SEGURIDAD Y ESTRUCTURA ACADÉMICA BASE (Jardín a 5° de Primaria)
+// 3. RELACIONES DE HORARIOS DE CLASE Y CALIFICACIONES
+// ============================================================================
+
+DocenteCursoMateria.hasMany(HorarioClase, {
+  sourceKey: 'id',
+  foreignKey: 'asignacionId',
+  as: 'horarios',
+  onDelete: 'CASCADE',
+});
+HorarioClase.belongsTo(DocenteCursoMateria, {
+  targetKey: 'id',
+  foreignKey: 'asignacionId',
+  as: 'asignacion',
+});
+
+Docente.hasMany(HorarioClase, {
+  sourceKey: 'id',
+  foreignKey: 'docenteId',
+  as: 'horarios',
+  onDelete: 'CASCADE',
+});
+HorarioClase.belongsTo(Docente, {
+  targetKey: 'id',
+  foreignKey: 'docenteId',
+  as: 'docente',
+});
+
+Curso.hasMany(HorarioClase, {
+  sourceKey: 'id',
+  foreignKey: 'cursoId',
+  as: 'horarios',
+  onDelete: 'CASCADE',
+});
+HorarioClase.belongsTo(Curso, {
+  targetKey: 'id',
+  foreignKey: 'cursoId',
+  as: 'curso',
+});
+
+Materia.hasMany(HorarioClase, {
+  sourceKey: 'id',
+  foreignKey: 'materiaId',
+  as: 'horarios',
+  onDelete: 'CASCADE',
+});
+HorarioClase.belongsTo(Materia, {
+  targetKey: 'id',
+  foreignKey: 'materiaId',
+  as: 'materia',
+});
+
+Estudiante.hasMany(Calificacion, {
+  sourceKey: 'id',
+  foreignKey: 'estudianteId',
+  as: 'calificaciones',
+  onDelete: 'CASCADE',
+});
+Calificacion.belongsTo(Estudiante, {
+  targetKey: 'id',
+  foreignKey: 'estudianteId',
+  as: 'estudiante',
+});
+
+Materia.hasMany(Calificacion, {
+  sourceKey: 'id',
+  foreignKey: 'materiaId',
+  as: 'calificaciones',
+  onDelete: 'CASCADE',
+});
+Calificacion.belongsTo(Materia, {
+  targetKey: 'id',
+  foreignKey: 'materiaId',
+  as: 'materia',
+});
+
+Curso.hasMany(Calificacion, {
+  sourceKey: 'id',
+  foreignKey: 'cursoId',
+  as: 'calificaciones',
+  onDelete: 'CASCADE',
+});
+Calificacion.belongsTo(Curso, {
+  targetKey: 'id',
+  foreignKey: 'cursoId',
+  as: 'curso',
+});
+
+Docente.hasMany(Calificacion, {
+  sourceKey: 'id',
+  foreignKey: 'docenteId',
+  as: 'calificaciones',
+});
+Calificacion.belongsTo(Docente, {
+  targetKey: 'id',
+  foreignKey: 'docenteId',
+  as: 'docente',
+});
+
+// ============================================================================
+// 4. SEED DE SEGURIDAD Y ESTRUCTURA ACADÉMICA BASE (Jardín a 5° de Primaria)
 // ============================================================================
 export const seedSeguridadBase = async (): Promise<void> => {
   try {
-    // Asegurar tablas del módulo académico en PostgreSQL
     await Curso.sync();
     await Materia.sync();
     await Docente.sync();
     await DocenteCursoMateria.sync();
     await Estudiante.sync();
+    await HorarioClase.sync();
+    await Calificacion.sync();
 
     const permisosBase = [
       {
@@ -275,7 +377,7 @@ export const seedSeguridadBase = async (): Promise<void> => {
         grupo: 'A',
         nivel: 'PREESCOLAR',
         cupoMaximo: 20,
-        aula: 'Aula 101 - Preescolar',
+        aula: 'Salón 101 - Preescolar',
       },
       {
         codigo: 'TRA-A',
@@ -285,7 +387,7 @@ export const seedSeguridadBase = async (): Promise<void> => {
         grupo: 'A',
         nivel: 'PREESCOLAR',
         cupoMaximo: 22,
-        aula: 'Aula 102 - Preescolar',
+        aula: 'Salón 102 - Preescolar',
       },
       {
         codigo: 'PRI-1A',
@@ -295,7 +397,7 @@ export const seedSeguridadBase = async (): Promise<void> => {
         grupo: 'A',
         nivel: 'PRIMARIA',
         cupoMaximo: 25,
-        aula: 'Aula 201 - Primaria',
+        aula: 'Salón 201 - Primaria',
       },
       {
         codigo: 'PRI-2A',
@@ -305,7 +407,7 @@ export const seedSeguridadBase = async (): Promise<void> => {
         grupo: 'A',
         nivel: 'PRIMARIA',
         cupoMaximo: 25,
-        aula: 'Aula 202 - Primaria',
+        aula: 'Salón 202 - Primaria',
       },
       {
         codigo: 'PRI-3A',
@@ -315,7 +417,7 @@ export const seedSeguridadBase = async (): Promise<void> => {
         grupo: 'A',
         nivel: 'PRIMARIA',
         cupoMaximo: 25,
-        aula: 'Aula 203 - Primaria',
+        aula: 'Salón 203 - Primaria',
       },
       {
         codigo: 'PRI-4A',
@@ -325,7 +427,7 @@ export const seedSeguridadBase = async (): Promise<void> => {
         grupo: 'A',
         nivel: 'PRIMARIA',
         cupoMaximo: 28,
-        aula: 'Aula 301 - Primaria',
+        aula: 'Salón 301 - Primaria',
       },
       {
         codigo: 'PRI-5A',
@@ -335,7 +437,7 @@ export const seedSeguridadBase = async (): Promise<void> => {
         grupo: 'A',
         nivel: 'PRIMARIA',
         cupoMaximo: 28,
-        aula: 'Aula 302 - Primaria',
+        aula: 'Salón 302 - Primaria',
       },
     ];
 
@@ -420,7 +522,7 @@ export const seedSeguridadBase = async (): Promise<void> => {
       });
     }
 
-    console.log('[DB Seed] Estructura académica (Jardín a 5° Primaria y Materias) verificada.');
+    console.log('[DB Seed] Estructura académica, horarios y calificaciones verificada.');
   } catch (error) {
     console.warn(
       '[DB Seed] Advertencia durante la inicialización de datos base:',
@@ -442,4 +544,6 @@ export {
   Docente,
   DocenteCursoMateria,
   Estudiante,
+  HorarioClase,
+  Calificacion,
 };

@@ -1,0 +1,221 @@
+<div class="portal-wrapper">
+  <!-- ENCABEZADO DE CONSULTA PADRE DE FAMILIA / ESTUDIANTE -->
+  <div class="portal-banner">
+    <div>
+      <span class="portal-tag">Portal Académico Padre de Familia y Estudiante (Solo Lectura)</span>
+      <h1>Mis Materias, Boletín de Notas y Horario de Clases</h1>
+      <p *ngIf="estudiante && curso">
+        Estudiante: <strong>{{ estudiante.nombres }} {{ estudiante.apellidos }}</strong>
+        · Matrícula: <span class="mono">{{ estudiante.codigoMatricula }}</span>
+        · Salón: <strong>{{ curso.nombre }} (Grupo {{ curso.grupo }})</strong>
+      </p>
+    </div>
+
+    <div class="student-selector" *ngIf="estudiantesDisponibles.length > 1">
+      <label>Seleccionar Estudiante:</label>
+      <select
+        [ngModel]="estudiante?.id"
+        (ngModelChange)="cargarPortal($event)">
+        <option *ngFor="let e of estudiantesDisponibles" [value]="e.id">
+          {{ e.apellidos }}, {{ e.nombres }} — {{ e.curso?.nombre }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <ng-container *ngIf="estudiante && curso; else sinEstudianteVinculado">
+    <!-- RESUMEN DE SALÓN Y DIRECTORA DE GRUPO -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="sum-icon indigo">
+          <span class="material-icons">meeting_room</span>
+        </div>
+        <div>
+          <span class="sum-label">Salón de Clase / Grado</span>
+          <strong class="sum-val">{{ curso.nombre }} ({{ curso.nivel }})</strong>
+          <small class="sum-sub">{{ curso.aula || 'Salón Principal' }}</small>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="sum-icon emerald">
+          <span class="material-icons">supervisor_account</span>
+        </div>
+        <div>
+          <span class="sum-label">Directora de Grupo</span>
+          <strong class="sum-val" *ngIf="curso.directorGrupo; else noDir">
+            Prof. {{ curso.directorGrupo.nombres }} {{ curso.directorGrupo.apellidos }}
+          </strong>
+          <ng-template #noDir>
+            <strong class="sum-val">Por asignar</strong>
+          </ng-template>
+          <small class="sum-sub" *ngIf="curso.directorGrupo">
+            {{ curso.directorGrupo.email }}
+          </small>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="sum-icon amber">
+          <span class="material-icons">menu_book</span>
+        </div>
+        <div>
+          <span class="sum-label">Materias Inscritas</span>
+          <strong class="sum-val">{{ materiasYNotas.length }} Asignaturas</strong>
+          <small class="sum-sub">Plan de estudios vigente {{ curso.anioLectivo }}</small>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="sum-icon sky">
+          <span class="material-icons">military_tech</span>
+        </div>
+        <div>
+          <span class="sum-label">Promedio Acumulado</span>
+          <strong class="sum-val">{{ promedioGeneral }}</strong>
+          <small class="sum-sub">Escala Institucional 1.0 a 5.0</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONMUTADOR DE VISTA: MATERIAS Y NOTAS vs HORARIO DE CLASES -->
+    <div class="portal-tabs">
+      <button
+        type="button"
+        class="p-tab"
+        [class.active]="vistaActiva === 'BOLETIN'"
+        (click)="vistaActiva = 'BOLETIN'">
+        <span class="material-icons">grading</span>
+        <span>Mis Materias y Calificaciones</span>
+      </button>
+
+      <button
+        type="button"
+        class="p-tab"
+        [class.active]="vistaActiva === 'HORARIO'"
+        (click)="vistaActiva = 'HORARIO'">
+        <span class="material-icons">calendar_month</span>
+        <span>Mi Horario de Clases Semanal</span>
+      </button>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- VISTA 1: MIS MATERIAS Y BOLETÍN DE CALIFICACIONES                   -->
+    <!-- =================================================================== -->
+    <section *ngIf="vistaActiva === 'BOLETIN'" class="portal-card">
+      <div class="card-title-row">
+        <div>
+          <h2>Materias Cursadas y Reporte de Calificaciones</h2>
+          <p>Detalle de las asignaturas del salón {{ curso.nombre }}, docente titular y notas por periodo académico.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="erp-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Materia / Asignatura</th>
+              <th>Docente que la Imparte</th>
+              <th>Intensidad</th>
+              <th>P1</th>
+              <th>P2</th>
+              <th>P3</th>
+              <th>P4</th>
+              <th>Definitiva</th>
+              <th>Desempeño</th>
+              <th>Observación Docente</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of materiasYNotas">
+              <td><span class="mono">{{ item.materia?.codigo }}</span></td>
+              <td>
+                <strong>{{ item.materia?.nombre }}</strong>
+                <div class="meta-text">{{ item.materia?.area }}</div>
+              </td>
+              <td>
+                <div class="teacher-name">
+                  Prof. {{ item.docente?.nombres }} {{ item.docente?.apellidos }}
+                </div>
+                <div class="meta-text">{{ item.docente?.email }}</div>
+              </td>
+              <td>
+                <span class="hours-pill">{{ item.intensidadHoraria }}h / sem</span>
+              </td>
+              <td class="grade-cell">{{ item.notaP1 ?? '—' }}</td>
+              <td class="grade-cell">{{ item.notaP2 ?? '—' }}</td>
+              <td class="grade-cell">{{ item.notaP3 ?? '—' }}</td>
+              <td class="grade-cell">{{ item.notaP4 ?? '—' }}</td>
+              <td>
+                <span
+                  class="def-badge"
+                  [class.pass]="(item.notaDefinitiva || 0) >= 3.0"
+                  [class.fail]="item.notaDefinitiva && item.notaDefinitiva < 3.0">
+                  {{ item.notaDefinitiva ?? '—' }}
+                </span>
+              </td>
+              <td>
+                <span class="perf-badge" [ngClass]="nivelDesempeno(item.notaDefinitiva).clase">
+                  {{ nivelDesempeno(item.notaDefinitiva).etiqueta }}
+                </span>
+              </td>
+              <td>
+                <span class="obs-text">{{ item.observacion || 'Sin observaciones registradas' }}</span>
+              </td>
+            </tr>
+            <tr *ngIf="materiasYNotas.length === 0">
+              <td colspan="11" class="empty-msg">
+                Aún no se han programado materias para este salón de clase.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VISTA 2: MI HORARIO DE CLASES DE LA SEMANA (LUNES A VIERNES)        -->
+    <!-- =================================================================== -->
+    <section *ngIf="vistaActiva === 'HORARIO'" class="portal-card">
+      <div class="card-title-row">
+        <div>
+          <h2>Horario de Clases de la Semana — {{ curso.nombre }} (Grupo {{ curso.grupo }})</h2>
+          <p>Consulta a qué hora se dicta cada materia, en qué salón y con qué profesora.</p>
+        </div>
+      </div>
+
+      <div class="week-grid">
+        <div *ngFor="let dia of diasSemana" class="day-col">
+          <div class="day-head">{{ dia.nombre }}</div>
+          <div class="day-body">
+            <div *ngFor="let h of horariosPorDia(dia.codigo)" class="schedule-item">
+              <div class="sch-time">{{ h.horaInicio }} - {{ h.horaFin }}</div>
+              <div class="sch-subject">{{ h.materia?.nombre }}</div>
+              <div class="sch-teacher">
+                Prof. {{ h.docente?.nombres }} {{ h.docente?.apellidos }}
+              </div>
+              <div class="sch-room">
+                <span class="material-icons">place</span>
+                <span>{{ h.aula || curso.aula }}</span>
+              </div>
+            </div>
+
+            <div *ngIf="horariosPorDia(dia.codigo).length === 0" class="empty-slot">
+              Sin clases programadas
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </ng-container>
+
+  <ng-template #sinEstudianteVinculado>
+    <div class="portal-card empty-msg">
+      <span class="material-icons" style="font-size: 42px; color: #94a3b8;">school</span>
+      <h3>Aún no hay estudiantes matriculados en el sistema</h3>
+      <p>Una vez el Administrador matricule al estudiante en su grado correspondiente, podrás ver aquí sus materias, notas y horario de clases.</p>
+    </div>
+  </ng-template>
+</div>
+

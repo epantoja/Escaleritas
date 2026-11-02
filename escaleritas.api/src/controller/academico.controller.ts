@@ -4,6 +4,8 @@ import {
   actualizarCursoBL,
   listarMateriasBL,
   crearMateriaBL,
+  actualizarMateriaBL,
+  eliminarMateriaBL,
   listarEstudiantesBL,
   obtenerEstudiantePorIdBL,
   crearEstudianteBL,
@@ -11,15 +13,23 @@ import {
   eliminarEstudianteBL,
   listarDocentesBL,
   obtenerDocentePorIdBL,
+  obtenerMiPerfilDocenteBL,
   crearDocenteBL,
   actualizarDocenteBL,
   eliminarDocenteBL,
   asignarDocenteCursoMateriaBL,
   eliminarAsignacionDocenteBL,
+  listarHorariosBL,
+  crearHorarioClaseBL,
+  eliminarHorarioClaseBL,
+  listarCalificacionesPorCursoMateriaBL,
+  guardarCalificacionBL,
+  obtenerPortalEstudianteBL,
 } from '../businessLogic/academico.BL';
+import { AuthenticatedRequest } from '../middlewares/autenticacion';
 
 // ============================================================================
-// CONTROLADORES DE CURSOS Y MATERIAS
+// 1. CONTROLADORES DE CURSOS / SALONES Y DIRECTORA DE GRUPO
 // ============================================================================
 
 export const getCursosController = async (
@@ -44,7 +54,7 @@ export const putCursoController = async (
     const curso = await actualizarCursoBL(req.params.id, req.body);
     res.status(200).json({
       ok: true,
-      mensaje: 'Curso actualizado correctamente',
+      mensaje: 'Salón de clase y directora de grupo actualizados correctamente',
       curso,
     });
   } catch (error) {
@@ -52,13 +62,18 @@ export const putCursoController = async (
   }
 };
 
+// ============================================================================
+// 2. CONTROLADORES DE MATERIAS (ADMINISTRACIÓN DE MATERIAS)
+// ============================================================================
+
 export const getMateriasController = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const materias = await listarMateriasBL();
+    const { busqueda } = req.query;
+    const materias = await listarMateriasBL(busqueda as string);
     res.status(200).json({ ok: true, materias });
   } catch (error) {
     next(error);
@@ -82,8 +97,38 @@ export const postMateriaController = async (
   }
 };
 
+export const putMateriaController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const materia = await actualizarMateriaBL(req.params.id, req.body);
+    res.status(200).json({
+      ok: true,
+      mensaje: 'Materia actualizada correctamente',
+      materia,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteMateriaController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const resultado = await eliminarMateriaBL(req.params.id);
+    res.status(200).json({ ok: true, ...resultado });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ============================================================================
-// CONTROLADORES DE ESTUDIANTES (MATRÍCULAS CRUD)
+// 3. CONTROLADORES DE ESTUDIANTES (MATRÍCULAS CRUD)
 // ============================================================================
 
 export const getEstudiantesController = async (
@@ -165,7 +210,7 @@ export const deleteEstudianteController = async (
 };
 
 // ============================================================================
-// CONTROLADORES DE DOCENTES Y ASIGNACIÓN DE GRADOS/MATERIAS (CRUD + N:M)
+// 4. CONTROLADORES DE DOCENTES Y ASIGNACIÓN DE GRADOS/MATERIAS (CRUD + N:M)
 // ============================================================================
 
 export const getDocentesController = async (
@@ -181,6 +226,23 @@ export const getDocentesController = async (
       especialidad: especialidad as string,
     });
     res.status(200).json({ ok: true, docentes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMiPerfilDocenteController = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ ok: false, error: 'Usuario no autenticado' });
+      return;
+    }
+    const data = await obtenerMiPerfilDocenteBL(req.user);
+    res.status(200).json({ ok: true, ...data });
   } catch (error) {
     next(error);
   }
@@ -255,7 +317,7 @@ export const postAsignarDocenteCursoController = async (
     const docente = await asignarDocenteCursoMateriaBL(req.params.id, req.body);
     res.status(201).json({
       ok: true,
-      mensaje: 'Asignación académica registrada correctamente',
+      mensaje: 'Materia y salón asignados correctamente a la docente',
       docente,
     });
   } catch (error) {
@@ -280,3 +342,109 @@ export const deleteAsignacionDocenteController = async (
   }
 };
 
+// ============================================================================
+// 5. CONTROLADORES DE HORARIOS DE CLASE Y CALIFICACIONES / PORTAL ESTUDIANTE
+// ============================================================================
+
+export const getHorariosController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { docenteId, cursoId, asignacionId } = req.query;
+    const horarios = await listarHorariosBL({
+      docenteId: docenteId as string,
+      cursoId: cursoId as string,
+      asignacionId: asignacionId as string,
+    });
+    res.status(200).json({ ok: true, horarios });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postHorarioController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const horario = await crearHorarioClaseBL(req.body);
+    res.status(201).json({
+      ok: true,
+      mensaje: 'Bloque de horario semanal registrado correctamente',
+      horario,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteHorarioController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const resultado = await eliminarHorarioClaseBL(req.params.id);
+    res.status(200).json({ ok: true, ...resultado });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCalificacionesCursoMateriaController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { cursoId, materiaId } = req.query;
+    const planilla = await listarCalificacionesPorCursoMateriaBL(
+      cursoId as string,
+      materiaId as string
+    );
+    res.status(200).json({ ok: true, planilla });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postCalificacionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const calificacion = await guardarCalificacionBL(req.body);
+    res.status(200).json({
+      ok: true,
+      mensaje: 'Calificación guardada exitosamente',
+      calificacion,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPortalEstudianteController = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ ok: false, error: 'Usuario no autenticado' });
+      return;
+    }
+    const { estudianteId } = req.query;
+    const data = await obtenerPortalEstudianteBL(
+      req.user,
+      estudianteId as string | undefined
+    );
+    res.status(200).json({ ok: true, ...data });
+  } catch (error) {
+    next(error);
+  }
+};

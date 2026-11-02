@@ -1,1 +1,74 @@
-<router-outlet></router-outlet>
+<div class="erp-shell">
+  <!-- MENÚ LATERAL INSTITUCIONAL (FILTRADO POR ROL) -->
+  <aside class="erp-sidebar" [class.open]="menuAbiertoMovil">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo">
+        <span class="material-icons">school</span>
+      </div>
+      <div>
+        <div class="sidebar-title">Escaleritas ERP</div>
+        <div class="sidebar-subtitle">Jardín a 5° de Primaria</div>
+      </div>
+    </div>
+
+    <div class="sidebar-role-banner" *ngIf="usuario">
+      <span class="role-dot"></span>
+      <div>
+        <small>Perfil Activo</small>
+        <strong>{{ usuario.rolNombre || usuario.rol }}</strong>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MENÚ PRINCIPAL</div>
+      <a
+        *ngFor="let item of menuFiltradoPorRol"
+        [routerLink]="item.ruta"
+        routerLinkActive="active"
+        (click)="menuAbiertoMovil = false"
+        class="sidebar-link">
+        <div class="sidebar-link-icon">
+          <span class="material-icons">{{ item.icono }}</span>
+        </div>
+        <div class="sidebar-link-text">
+          <span class="link-title">{{ item.titulo }}</span>
+          <span class="link-sub">{{ item.subtitulo }}</span>
+        </div>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer" *ngIf="usuario">
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          {{ usuario.nombre?.charAt(0) || 'U' }}
+        </div>
+        <div class="user-details">
+          <div class="user-fullname">{{ usuario.nombre }} {{ usuario.apellido }}</div>
+          <div class="user-code">@{{ usuario.usuario }}</div>
+        </div>
+      </div>
+      <button type="button" class="sidebar-logout" (click)="cerrarSesion()">
+        <span class="material-icons">logout</span>
+        <span>Cerrar Sesión</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ÁREA DE CONTENIDO PRINCIPAL -->
+  <div class="erp-main">
+    <!-- Barra móvil superior -->
+    <header class="mobile-header">
+      <button type="button" class="menu-toggle" (click)="menuAbiertoMovil = !menuAbiertoMovil">
+        <span class="material-icons">menu</span>
+      </button>
+      <span class="mobile-title">ERP Educativo Escaleritas</span>
+      <button type="button" class="mobile-logout" (click)="cerrarSesion()">
+        <span class="material-icons">logout</span>
+      </button>
+    </header>
+
+    <div class="erp-content">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

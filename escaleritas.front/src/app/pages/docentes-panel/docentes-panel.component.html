@@ -1,0 +1,415 @@
+<div class="docente-wrapper">
+  <!-- ENCABEZADO DEL PANEL DOCENTE -->
+  <div class="docente-header">
+    <div>
+      <span class="role-badge">Módulo de Gestión Docente</span>
+      <h1>Configuración de Mis Materias, Horario Semanal y Notas</h1>
+      <p *ngIf="docenteActivo">
+        Docente: <strong>{{ docenteActivo.nombres }} {{ docenteActivo.apellidos }}</strong>
+        · Código: <span class="mono">{{ docenteActivo.codigoDocente }}</span>
+        · Especialidad: {{ docenteActivo.especialidad }}
+      </p>
+    </div>
+
+    <!-- Selector de docente visible para el Administrador -->
+    <div class="admin-teacher-selector" *ngIf="esAdmin && docentesDisponibles.length > 0">
+      <label>Viendo agenda de docente (Modo Admin):</label>
+      <select
+        [ngModel]="docenteActivo?.id"
+        (ngModelChange)="seleccionarDocentePorId($event)">
+        <option *ngFor="let d of docentesDisponibles" [value]="d.id">
+          {{ d.apellidos }}, {{ d.nombres }} ({{ d.especialidad }})
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- PESTAÑAS INTERNAS DEL DOCENTE -->
+  <div class="sub-tabs">
+    <button
+      type="button"
+      class="sub-tab"
+      [class.active]="vistaActiva === 'MATERIAS_HORARIO'"
+      (click)="vistaActiva = 'MATERIAS_HORARIO'">
+      <span class="material-icons">calendar_month</span>
+      <span>1. Mis Materias y Horario Semanal</span>
+    </button>
+
+    <button
+      type="button"
+      class="sub-tab"
+      [class.active]="vistaActiva === 'CALIFICACIONES'"
+      (click)="vistaActiva = 'CALIFICACIONES'">
+      <span class="material-icons">fact_check</span>
+      <span>2. Registrar Notas por Materia</span>
+    </button>
+
+    <button
+      type="button"
+      class="sub-tab"
+      [class.active]="vistaActiva === 'DIRECCION_GRUPO'"
+      (click)="vistaActiva = 'DIRECCION_GRUPO'">
+      <span class="material-icons">Groups</span>
+      <span>3. Mi Salón (Directora de Grupo) ({{ cursosDirigidos.length }})</span>
+    </button>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 1: CONFIGURAR MATERIAS QUE ENSEÑA Y SU HORARIO DE LA SEMANA     -->
+  <!-- ===================================================================== -->
+  <div *ngIf="vistaActiva === 'MATERIAS_HORARIO'" class="two-col-grid">
+    <!-- Columna Izquierda: Formularios de Configuración -->
+    <div class="config-col">
+      <!-- Tarjeta A: Configurar Materias que Enseño -->
+      <section class="card-box">
+        <div class="card-head">
+          <span class="material-icons head-icon indigo">library_books</span>
+          <div>
+            <h2>Materias que Enseño</h2>
+            <p>Selecciona la asignatura y el salón de clase donde la dictas.</p>
+          </div>
+        </div>
+
+        <form [formGroup]="asignacionForm" (ngSubmit)="agregarMateriaQueEnsena()" class="form-stack">
+          <div class="field">
+            <label>Salón de Clase / Grado (Jardín a 5°) <span class="req">*</span></label>
+            <div class="input-box">
+              <select formControlName="cursoId">
+                <option *ngFor="let c of cursos" [value]="c.id">
+                  {{ c.nombre }} - Grupo {{ c.grupo }} ({{ c.aula || 'Salón Principal' }})
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label>Materia que Enseño <span class="req">*</span></label>
+              <div class="input-box">
+                <select formControlName="materiaId">
+                  <option *ngFor="let m of materias" [value]="m.id">
+                    {{ m.nombre }} ({{ m.codigo }})
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Horas / Semana <span class="req">*</span></label>
+              <div class="input-box">
+                <input type="number" min="1" max="25" formControlName="intensidadHoraria" />
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-indigo" [disabled]="guardando">
+            <span class="material-icons">add_task</span>
+            <span>Agregar Materia a mi Carga Académica</span>
+          </button>
+        </form>
+
+        <!-- Lista de materias actualmente enseñadas por la docente -->
+        <div class="taught-list">
+          <h4>Mis Materias Configuradas ({{ docenteActivo?.asignaciones?.length || 0 }})</h4>
+          <div class="taught-items" *ngIf="docenteActivo?.asignaciones?.length; else sinMaterias">
+            <div *ngFor="let a of docenteActivo?.asignaciones" class="taught-item">
+              <div>
+                <strong>{{ a.materia?.nombre }}</strong>
+                <span class="taught-sub">
+                  Salón: {{ a.curso?.nombre }} (Grupo {{ a.curso?.grupo }}) · {{ a.intensidadHoraria }}h/sem
+                </span>
+              </div>
+              <button
+                type="button"
+                class="remove-btn"
+                title="Quitar materia"
+                (click)="quitarMateriaQueEnsena(a.id)">
+                <span class="material-icons">delete_outline</span>
+              </button>
+            </div>
+          </div>
+          <ng-template #sinMaterias>
+            <p class="muted">Agrega arriba las materias que enseñas para programar su horario.</p>
+          </ng-template>
+        </div>
+      </section>
+
+      <!-- Tarjeta B: Programar Horario de la Semana por Materia Enseñada -->
+      <section class="card-box">
+        <div class="card-head">
+          <span class="material-icons head-icon emerald">schedule</span>
+          <div>
+            <h2>Programar Horario de la Semana</h2>
+            <p>Asigna día y bloque horario a cada materia que enseñas.</p>
+          </div>
+        </div>
+
+        <form [formGroup]="horarioForm" (ngSubmit)="agregarBloqueHorario()" class="form-stack">
+          <div class="field">
+            <label>Materia y Salón <span class="req">*</span></label>
+            <div class="input-box">
+              <select formControlName="asignacionId">
+                <option *ngFor="let a of docenteActivo?.asignaciones" [value]="a.id">
+                  {{ a.materia?.nombre }} — {{ a.curso?.nombre }} ({{ a.curso?.codigo }})
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field">
+              <label>Día de la Semana <span class="req">*</span></label>
+              <div class="input-box">
+                <select formControlName="diaSemana">
+                  <option *ngFor="let d of diasSemana" [value]="d.codigo">
+                    {{ d.nombre }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Franja Horaria <span class="req">*</span></label>
+              <div class="input-box">
+                <select formControlName="bloqueIndice">
+                  <option *ngFor="let b of bloquesHora; let idx = index" [value]="idx">
+                    {{ b.etiqueta }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Salón / Aula (Opcional)</label>
+            <div class="input-box">
+              <input type="text" formControlName="aula" placeholder="Ej. Salón 101 - Preescolar" />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            class="btn-emerald"
+            [disabled]="guardando || !(docenteActivo?.asignaciones?.length)">
+            <span class="material-icons">add_alarm</span>
+            <span>Agregar al Horario Semanal</span>
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <!-- Columna Derecha: Calendario Semanal Visual (Lunes a Viernes) -->
+    <section class="card-box schedule-board">
+      <div class="card-head">
+        <span class="material-icons head-icon sky">view_week</span>
+        <div>
+          <h2>Mi Horario de Clases de la Semana (Lunes a Viernes)</h2>
+          <p>Distribución semanal de todas las materias que enseñas por salón y hora.</p>
+        </div>
+      </div>
+
+      <div class="week-grid">
+        <div *ngFor="let dia of diasSemana" class="day-column">
+          <div class="day-header">{{ dia.nombre }}</div>
+
+          <div class="day-slots">
+            <div *ngFor="let h of horariosPorDia(dia.codigo)" class="slot-card">
+              <div class="slot-time">
+                <span>{{ h.horaInicio }} - {{ h.horaFin }}</span>
+                <button
+                  type="button"
+                  class="slot-del"
+                  title="Eliminar bloque"
+                  (click)="eliminarBloqueHorario(h.id)">
+                  ×
+                </button>
+              </div>
+              <div class="slot-subject">{{ h.materia?.nombre }}</div>
+              <div class="slot-course">
+                <span class="material-icons">meeting_room</span>
+                <span>{{ h.curso?.nombre }} · {{ h.aula }}</span>
+              </div>
+            </div>
+
+            <div *ngIf="horariosPorDia(dia.codigo).length === 0" class="empty-day">
+              Sin clases programadas
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 2: PLANILLA DE CALIFICACIONES POR MATERIA                       -->
+  <!-- ===================================================================== -->
+  <section *ngIf="vistaActiva === 'CALIFICACIONES'" class="card-box">
+    <div class="grades-header">
+      <div>
+        <h2>Planilla de Calificaciones por Materia (Escala 1.0 a 5.0)</h2>
+        <p>Selecciona una de las materias que enseñas para ingresar o actualizar las notas de los estudiantes.</p>
+      </div>
+
+      <div class="subject-pills">
+        <button
+          *ngFor="let a of docenteActivo?.asignaciones"
+          type="button"
+          class="subj-pill"
+          [class.active]="asignacionCalificando?.id === a.id"
+          (click)="seleccionarAsignacionParaCalificar(a)">
+          <strong>{{ a.materia?.nombre }}</strong>
+          <span>{{ a.curso?.nombre }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="table-wrap" *ngIf="asignacionCalificando; else seleccioneMateria">
+      <table class="erp-table">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Estudiante</th>
+            <th>Periodo 1</th>
+            <th>Periodo 2</th>
+            <th>Periodo 3</th>
+            <th>Periodo 4</th>
+            <th>Definitiva</th>
+            <th>Observación Pedagógica</th>
+            <th class="text-right">Guardar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of planillaNotas">
+            <td><span class="mono">{{ item.estudiante.codigoMatricula }}</span></td>
+            <td>
+              <strong>{{ item.estudiante.apellidos }}, {{ item.estudiante.nombres }}</strong>
+            </td>
+            <td>
+              <input
+                type="number"
+                step="0.1"
+                min="1"
+                max="5"
+                class="grade-input"
+                [(ngModel)]="item.calificacion.notaP1"
+                placeholder="1.0-5.0" />
+            </td>
+            <td>
+              <input
+                type="number"
+                step="0.1"
+                min="1"
+                max="5"
+                class="grade-input"
+                [(ngModel)]="item.calificacion.notaP2"
+                placeholder="1.0-5.0" />
+            </td>
+            <td>
+              <input
+                type="number"
+                step="0.1"
+                min="1"
+                max="5"
+                class="grade-input"
+                [(ngModel)]="item.calificacion.notaP3"
+                placeholder="1.0-5.0" />
+            </td>
+            <td>
+              <input
+                type="number"
+                step="0.1"
+                min="1"
+                max="5"
+                class="grade-input"
+                [(ngModel)]="item.calificacion.notaP4"
+                placeholder="1.0-5.0" />
+            </td>
+            <td>
+              <span
+                class="final-badge"
+                [class.pass]="(item.calificacion.notaDefinitiva || 0) >= 3.0"
+                [class.fail]="item.calificacion.notaDefinitiva && item.calificacion.notaDefinitiva < 3.0">
+                {{ item.calificacion.notaDefinitiva || '—' }}
+              </span>
+            </td>
+            <td>
+              <input
+                type="text"
+                class="obs-input"
+                [(ngModel)]="item.calificacion.observacion"
+                placeholder="Logros o recomendaciones..." />
+            </td>
+            <td class="text-right">
+              <button
+                type="button"
+                class="btn-save-row"
+                (click)="guardarNotaEstudiante(item)">
+                <span class="material-icons">save</span>
+                <span>Guardar</span>
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="planillaNotas.length === 0">
+            <td colspan="9" class="empty-msg">
+              No hay estudiantes matriculados en este salón todavía.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #seleccioneMateria>
+      <p class="empty-msg">Configura primero al menos una materia en la pestaña "Mis Materias y Horario Semanal".</p>
+    </ng-template>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VISTA 3: MI SALÓN COMO DIRECTORA DE GRUPO                             -->
+  <!-- ===================================================================== -->
+  <section *ngIf="vistaActiva === 'DIRECCION_GRUPO'" class="card-box">
+    <h2>Salones donde eres Directora de Grupo</h2>
+    <p class="sub-desc">Listado de grupos asignados bajo tu dirección titular.</p>
+
+    <div class="homeroom-grid" *ngIf="cursosDirigidos.length > 0; else sinDireccionGrupo">
+      <div *ngFor="let c of cursosDirigidos" class="homeroom-card">
+        <div class="homeroom-head">
+          <div>
+            <span class="badge-level">{{ c.nivel }} · {{ c.codigo }}</span>
+            <h3>{{ c.nombre }} (Grupo {{ c.grupo }})</h3>
+            <p>{{ c.aula }} · Año Lectivo {{ c.anioLectivo }}</p>
+          </div>
+          <div class="count-box">
+            <strong>{{ c.estudiantes?.length || 0 }}/{{ c.cupoMaximo }}</strong>
+            <span>Alumnos</span>
+          </div>
+        </div>
+
+        <table class="erp-table mt-3">
+          <thead>
+            <tr>
+              <th>Código Matrícula</th>
+              <th>Nombre del Estudiante</th>
+              <th>Documento</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let e of c.estudiantes">
+              <td><span class="mono">{{ e.codigoMatricula }}</span></td>
+              <td><strong>{{ e.apellidos }}, {{ e.nombres }}</strong></td>
+              <td>{{ e.documento }}</td>
+              <td><span class="status-ok">{{ e.estadoMatricula }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <ng-template #sinDireccionGrupo>
+      <div class="empty-msg">
+        Actualmente no tienes un salón asignado como Directora de Grupo. El Administrador puede asignarte como Directora de Grupo desde Configuración Escolar.
+      </div>
+    </ng-template>
+  </section>
+</div>
+

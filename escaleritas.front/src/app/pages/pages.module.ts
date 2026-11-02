@@ -2,6 +2,9 @@ import { NgModule } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { HomeComponent } from './home/home.component';
 import { AdministracionComponent } from './administracion/administracion.component';
+import { MateriasComponent } from './materias/materias.component';
+import { DocentesPanelComponent } from './docentes-panel/docentes-panel.component';
+import { PortalEstudianteComponent } from './portal-estudiante/portal-estudiante.component';
 import { pageRouting } from './pages-routing.module';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { AppMaterialModule } from '../app-material.module';
@@ -33,6 +36,9 @@ import { MatIconModule } from '@angular/material/icon';
   declarations: [
     HomeComponent,
     AdministracionComponent,
+    MateriasComponent,
+    DocentesPanelComponent,
+    PortalEstudianteComponent,
     SnackBarAnnotatedComponent,
   ],
   exports: [],

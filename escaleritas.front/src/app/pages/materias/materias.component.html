@@ -1,0 +1,165 @@
+<div class="page-wrapper">
+  <div class="page-header">
+    <div>
+      <span class="badge-admin">Módulo exclusivo Administrador</span>
+      <h1>Administración del Catálogo de Materias</h1>
+      <p>Configura las asignaturas, áreas académicas e intensidad horaria semanal para Preescolar y Primaria.</p>
+    </div>
+    <button type="button" class="btn-primary" (click)="abrirModalNueva()">
+      <span class="material-icons">add_circle</span>
+      <span>Nueva Materia</span>
+    </button>
+  </div>
+
+  <!-- Barra de filtros -->
+  <div class="filter-bar">
+    <div class="filter-search">
+      <span class="material-icons">search</span>
+      <input
+        type="text"
+        [(ngModel)]="busqueda"
+        (keyup.enter)="cargarMaterias()"
+        placeholder="Buscar por código, nombre o área..." />
+    </div>
+
+    <div class="filter-select">
+      <select [(ngModel)]="areaFiltro" (change)="cargarMaterias()">
+        <option value="">Todas las Áreas Académicas</option>
+        <option *ngFor="let a of areasAcademicas" [value]="a">{{ a }}</option>
+      </select>
+    </div>
+
+    <button type="button" class="btn-dark" (click)="cargarMaterias()">
+      <span class="material-icons">filter_list</span>
+      <span>Filtrar</span>
+    </button>
+
+    <button type="button" class="btn-ghost" (click)="limpiarFiltros()">
+      Limpiar
+    </button>
+  </div>
+
+  <!-- Tabla de Materias -->
+  <div class="card-table">
+    <table class="erp-table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Asignatura / Materia</th>
+          <th>Área Académica</th>
+          <th>Intensidad Semanal</th>
+          <th>Descripción Curricular</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let m of materias">
+          <td>
+            <span class="code-pill">{{ m.codigo }}</span>
+          </td>
+          <td>
+            <strong class="subject-title">{{ m.nombre }}</strong>
+          </td>
+          <td>
+            <span class="area-badge">{{ m.area || 'General' }}</span>
+          </td>
+          <td>
+            <span class="hours-badge">{{ m.intensidadHoraria }} horas / semana</span>
+          </td>
+          <td>
+            <span class="desc-text">{{ m.descripcion || 'Sin descripción adicional' }}</span>
+          </td>
+          <td class="text-right">
+            <div class="actions">
+              <button
+                type="button"
+                class="icon-btn edit"
+                title="Editar materia"
+                (click)="abrirModalEditar(m)">
+                <span class="material-icons">edit</span>
+              </button>
+              <button
+                type="button"
+                class="icon-btn delete"
+                title="Eliminar materia"
+                (click)="eliminarMateria(m)">
+                <span class="material-icons">delete_outline</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="materias.length === 0">
+          <td colspan="6" class="empty-state">
+            <span class="material-icons">menu_book</span>
+            <p>No se encontraron materias con los criterios seleccionados.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- MODAL CREAR / EDITAR MATERIA -->
+  <div class="modal-backdrop" *ngIf="mostrarModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <h3>{{ materiaEditandoId ? 'Editar Materia' : 'Crear Nueva Materia' }}</h3>
+          <p>Define los datos curriculares de la asignatura.</p>
+        </div>
+        <button type="button" class="close-btn" (click)="mostrarModal = false">×</button>
+      </div>
+
+      <form [formGroup]="materiaForm" (ngSubmit)="guardarMateria()" class="modal-form" novalidate>
+        <div class="grid-2">
+          <div class="field">
+            <label>Código de Materia <span class="req">*</span></label>
+            <div class="input-box" [class.error]="tieneError('codigo', 'required')">
+              <input type="text" formControlName="codigo" placeholder="Ej. MAT-01" />
+            </div>
+            <span class="err-msg" *ngIf="tieneError('codigo', 'required')">El código es obligatorio.</span>
+          </div>
+
+          <div class="field">
+            <label>Intensidad Horaria (Horas / Semana) <span class="req">*</span></label>
+            <div class="input-box">
+              <input type="number" min="1" max="25" formControlName="intensidadHoraria" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Nombre de la Materia <span class="req">*</span></label>
+          <div class="input-box" [class.error]="tieneError('nombre', 'required')">
+            <input type="text" formControlName="nombre" placeholder="Ej. Matemáticas y Geometría" />
+          </div>
+          <span class="err-msg" *ngIf="tieneError('nombre', 'required')">El nombre es obligatorio.</span>
+        </div>
+
+        <div class="field">
+          <label>Área Académica <span class="req">*</span></label>
+          <div class="input-box">
+            <select formControlName="area">
+              <option *ngFor="let a of areasAcademicas" [value]="a">{{ a }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Descripción / Competencias</label>
+          <div class="input-box">
+            <input type="text" formControlName="descripcion" placeholder="Breve descripción de los contenidos..." />
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn-ghost" (click)="mostrarModal = false">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="guardando">
+            <span class="material-icons">save</span>
+            <span>{{ guardando ? 'Guardando...' : 'Guardar Materia' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+

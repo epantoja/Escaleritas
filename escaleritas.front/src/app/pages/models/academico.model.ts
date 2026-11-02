@@ -13,6 +13,13 @@ export type EstadoMatriculaTipo =
   | 'RETIRADO'
   | 'GRADUADO';
 
+export type DiaSemanaTipo =
+  | 'LUNES'
+  | 'MARTES'
+  | 'MIERCOLES'
+  | 'JUEVES'
+  | 'VIERNES';
+
 export interface MateriaModel {
   id: string;
   codigo: string;
@@ -20,6 +27,35 @@ export interface MateriaModel {
   area?: string | null;
   intensidadHoraria: number;
   descripcion?: string | null;
+}
+
+export interface HorarioClaseModel {
+  id: string;
+  asignacionId: string;
+  docenteId: string;
+  cursoId: string;
+  materiaId: string;
+  diaSemana: DiaSemanaTipo | string;
+  horaInicio: string;
+  horaFin: string;
+  aula?: string | null;
+  curso?: {
+    id: string;
+    codigo: string;
+    nombre: string;
+    grado: string;
+    grupo: string;
+    nivel: string;
+    aula?: string | null;
+  };
+  materia?: MateriaModel;
+  docente?: {
+    id: string;
+    codigoDocente: string;
+    nombres: string;
+    apellidos: string;
+    especialidad: string;
+  };
 }
 
 export interface AsignacionDocenteModel {
@@ -37,6 +73,7 @@ export interface AsignacionDocenteModel {
     grado: GradoEscolarTipo | string;
     grupo: string;
     nivel: string;
+    aula?: string | null;
   };
   materia?: MateriaModel;
   docente?: {
@@ -46,6 +83,7 @@ export interface AsignacionDocenteModel {
     apellidos: string;
     especialidad: string;
   };
+  horarios?: HorarioClaseModel[];
 }
 
 export interface DocenteModel {
@@ -60,6 +98,7 @@ export interface DocenteModel {
   especialidad: string;
   tituloAcademico?: string | null;
   fechaIngreso?: string | null;
+  usuarioId?: string | null;
   estado: number;
   asignaciones?: AsignacionDocenteModel[];
 }
@@ -82,6 +121,7 @@ export interface CursoModel {
     nombres: string;
     apellidos: string;
     email: string;
+    telefono?: string | null;
     especialidad: string;
   } | null;
   estudiantes?: {
@@ -89,6 +129,7 @@ export interface CursoModel {
     codigoMatricula: string;
     nombres: string;
     apellidos: string;
+    documento?: string;
     estadoMatricula: EstadoMatriculaTipo;
   }[];
   asignacionesDocentes?: AsignacionDocenteModel[];
@@ -126,3 +167,54 @@ export interface EstudianteModel {
   };
 }
 
+export interface CalificacionPlanillaItemModel {
+  estudiante: EstudianteModel;
+  calificacion: {
+    id?: string;
+    estudianteId: string;
+    cursoId: string;
+    materiaId: string;
+    notaP1: number | null;
+    notaP2: number | null;
+    notaP3: number | null;
+    notaP4: number | null;
+    notaDefinitiva: number | null;
+    observacion: string | null;
+  };
+}
+
+export interface MateriaYNotaEstudianteModel {
+  asignacionId: string;
+  materia: MateriaModel;
+  docente: {
+    id: string;
+    nombres: string;
+    apellidos: string;
+    email: string;
+    especialidad: string;
+  };
+  intensidadHoraria: number;
+  notaP1: number | null;
+  notaP2: number | null;
+  notaP3: number | null;
+  notaP4: number | null;
+  notaDefinitiva: number | null;
+  observacion: string | null;
+}
+
+export interface PortalEstudianteResponseModel {
+  ok: boolean;
+  estudiante: EstudianteModel | null;
+  curso: CursoModel | null;
+  materiasYNotas: MateriaYNotaEstudianteModel[];
+  horarios: HorarioClaseModel[];
+  estudiantesDisponibles: {
+    id: string;
+    codigoMatricula: string;
+    nombres: string;
+    apellidos: string;
+    documento: string;
+    cursoId: string;
+    curso?: { id: string; nombre: string; codigo: string };
+  }[];
+}

@@ -1,104 +1,143 @@
-<div class="min-h-screen bg-slate-50">
-  <!-- Barra superior -->
-  <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
-        <span class="material-icons">school</span>
-      </div>
-      <div>
-        <h1 class="text-lg font-bold text-slate-800 leading-tight">ERP Educativo Escaleritas</h1>
-        <p class="text-xs text-slate-500">Jardín a 5° de Primaria · Panel Principal</p>
-      </div>
+<div class="p-7 max-w-6xl mx-auto space-y-6">
+  <!-- Banner de Bienvenida según Rol -->
+  <div class="bg-gradient-to-r from-indigo-700 via-blue-700 to-indigo-900 rounded-2xl p-7 text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-wider mb-2">
+        <span class="material-icons text-sm">verified_user</span>
+        <span>Rol Activo: {{ usuario?.rolNombre || usuario?.rol }}</span>
+      </span>
+      <h1 class="text-2xl font-extrabold m-0">
+        ¡Hola, {{ usuario?.nombre }} {{ usuario?.apellido }}!
+      </h1>
+      <p class="text-indigo-100 text-sm mt-1 mb-0" *ngIf="loginService.tieneRol(['ADMIN'])">
+        Tienes acceso completo de Administrador para configurar salones, directoras de grupo, materias, docentes y matrículas.
+      </p>
+      <p class="text-indigo-100 text-sm mt-1 mb-0" *ngIf="loginService.tieneRol(['DOCENTE'])">
+        Desde tu portal docente puedes configurar las materias que enseñas, tu horario semanal y registrar calificaciones.
+      </p>
+      <p class="text-indigo-100 text-sm mt-1 mb-0" *ngIf="loginService.tieneRol(['PADRE_ESTUDIANTE', 'PADRE', 'ESTUDIANTE'])">
+        Bienvenido al portal estudiantil y familiar. Aquí puedes consultar tus materias, notas y horario de clases semanal.
+      </p>
     </div>
+  </div>
 
-    <div class="flex items-center gap-4" *ngIf="usuario">
-      <a
-        routerLink="/pages/administracion"
-        class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm transition">
-        <span class="material-icons text-base">account_tree</span>
-        <span>Ir a Gestión Académica</span>
-      </a>
-
-      <div class="text-right hidden sm:block">
-        <p class="text-sm font-semibold text-slate-800">{{ usuario.nombre }} {{ usuario.apellido }}</p>
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-          {{ usuario.rolNombre || usuario.rol }}
-        </span>
+  <!-- ===================================================================== -->
+  <!-- TARJETAS EXCLUSIVAS PARA EL ROL ADMINISTRADOR                         -->
+  <!-- ===================================================================== -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" *ngIf="loginService.tieneRol(['ADMIN'])">
+    <a
+      routerLink="/pages/administracion"
+      class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-400 transition block no-underline">
+      <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
+        <span class="material-icons">admin_panel_settings</span>
       </div>
-      <button
-        type="button"
-        (click)="cerrarSesion()"
-        class="px-3.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-medium flex items-center gap-1.5 transition">
-        <span class="material-icons text-base">logout</span>
-        <span>Salir</span>
-      </button>
-    </div>
-  </header>
+      <h3 class="font-bold text-slate-900 text-base mb-1">Configuración Escolar y Salones</h3>
+      <p class="text-sm text-slate-500 mb-4">
+        Matricular estudiantes, registrar docentes y asignar a cada salón (Jardín a 5°) su Directora de Grupo.
+      </p>
+      <span class="text-xs font-bold text-indigo-600 inline-flex items-center gap-1">
+        Abrir Configuración <span class="material-icons text-sm">arrow_forward</span>
+      </span>
+    </a>
 
-  <!-- Contenido según Rol y Permisos -->
-  <main class="max-w-6xl mx-auto p-6 space-y-6">
-    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-      <h2 class="text-base font-bold text-slate-800 mb-2">Permisos Activos en tu Sesión JWT</h2>
-      <div class="flex flex-wrap gap-2" *ngIf="usuario?.permisos?.length; else sinPermisos">
-        <span
-          *ngFor="let permiso of usuario?.permisos"
-          class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
-          {{ permiso }}
-        </span>
+    <a
+      routerLink="/pages/materias"
+      class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-400 transition block no-underline">
+      <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+        <span class="material-icons">menu_book</span>
       </div>
-      <ng-template #sinPermisos>
-        <p class="text-xs text-slate-500">Rol estándar asignado sin permisos adicionales.</p>
-      </ng-template>
-    </div>
+      <h3 class="font-bold text-slate-900 text-base mb-1">Administrar Materias</h3>
+      <p class="text-sm text-slate-500 mb-4">
+        Crear, editar y administrar el catálogo de materias, áreas curriculares e intensidad horaria semanal.
+      </p>
+      <span class="text-xs font-bold text-emerald-600 inline-flex items-center gap-1">
+        Gestionar Materias <span class="material-icons text-sm">arrow_forward</span>
+      </span>
+    </a>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-      <!-- Tarjeta Directorio y Estructura Académica -->
-      <a
-        routerLink="/pages/administracion"
-        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 transition block no-underline">
-        <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
-          <span class="material-icons">diversity_3</span>
-        </div>
-        <h3 class="font-bold text-slate-800 mb-1">Directorio y Estructura Académica</h3>
-        <p class="text-sm text-slate-500 mb-3">
-          Matrícula de Estudiantes, Planta Docente y Cursos desde Jardín hasta 5° de Primaria.
-        </p>
-        <span class="text-xs font-bold text-indigo-600 inline-flex items-center gap-1">
-          Abrir módulo <span class="material-icons text-sm">arrow_forward</span>
-        </span>
-      </a>
+    <a
+      routerLink="/pages/docentes"
+      class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-amber-400 transition block no-underline">
+      <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+        <span class="material-icons">calendar_month</span>
+      </div>
+      <h3 class="font-bold text-slate-900 text-base mb-1">Horarios Docentes y Notas</h3>
+      <p class="text-sm text-slate-500 mb-4">
+        Supervisar o configurar las materias que enseña cada docente, su horario semanal y planillas de notas.
+      </p>
+      <span class="text-xs font-bold text-amber-600 inline-flex items-center gap-1">
+        Ir a Panel Docente <span class="material-icons text-sm">arrow_forward</span>
+      </span>
+    </a>
+  </div>
 
-      <!-- Tarjeta Docente -->
-      <a
-        routerLink="/pages/administracion"
-        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-amber-300 transition block no-underline">
-        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
-          <span class="material-icons">co_present</span>
-        </div>
-        <h3 class="font-bold text-slate-800 mb-1">Asignación de Profesores y Materias</h3>
-        <p class="text-sm text-slate-500 mb-3">
-          Asigna docentes a múltiples grados y asignaturas con intensidad horaria semanal.
-        </p>
-        <span class="text-xs font-bold text-amber-600 inline-flex items-center gap-1">
-          Gestionar docentes <span class="material-icons text-sm">arrow_forward</span>
-        </span>
-      </a>
+  <!-- ===================================================================== -->
+  <!-- TARJETAS EXCLUSIVAS PARA EL ROL DOCENTE                               -->
+  <!-- ===================================================================== -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5" *ngIf="loginService.tieneRol(['DOCENTE'])">
+    <a
+      routerLink="/pages/docentes"
+      class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-400 transition block no-underline">
+      <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
+        <span class="material-icons">event_note</span>
+      </div>
+      <h3 class="font-bold text-slate-900 text-base mb-1">Mis Materias y Horario de la Semana</h3>
+      <p class="text-sm text-slate-500 mb-4">
+        Configura las materias que enseñas en cada salón y organiza tu horario semanal de Lunes a Viernes.
+      </p>
+      <span class="text-xs font-bold text-indigo-600 inline-flex items-center gap-1">
+        Configurar mis materias y horario <span class="material-icons text-sm">arrow_forward</span>
+      </span>
+    </a>
 
-      <!-- Tarjeta Cursos -->
-      <a
-        routerLink="/pages/administracion"
-        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-300 transition block no-underline">
-        <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
-          <span class="material-icons">meeting_room</span>
-        </div>
-        <h3 class="font-bold text-slate-800 mb-1">Grados Escolares (Jardín a 5°)</h3>
-        <p class="text-sm text-slate-500 mb-3">
-          Control de cupos disponibles, directores de grupo y aulas de Preescolar y Primaria.
-        </p>
-        <span class="text-xs font-bold text-emerald-600 inline-flex items-center gap-1">
-          Ver cursos <span class="material-icons text-sm">arrow_forward</span>
-        </span>
-      </a>
-    </div>
-  </main>
+    <a
+      routerLink="/pages/docentes"
+      class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-400 transition block no-underline">
+      <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+        <span class="material-icons">fact_check</span>
+      </div>
+      <h3 class="font-bold text-slate-900 text-base mb-1">Calificaciones y Dirección de Grupo</h3>
+      <p class="text-sm text-slate-500 mb-4">
+        Registra las notas por periodo de tus estudiantes y consulta el salón donde eres Directora de Grupo.
+      </p>
+      <span class="text-xs font-bold text-emerald-600 inline-flex items-center gap-1">
+        Abrir planilla de notas <span class="material-icons text-sm">arrow_forward</span>
+      </span>
+    </a>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- TARJETAS EXCLUSIVAS PARA EL ROL PADRE DE FAMILIA / ESTUDIANTE         -->
+  <!-- ===================================================================== -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5" *ngIf="loginService.tieneRol(['PADRE_ESTUDIANTE', 'PADRE', 'ESTUDIANTE'])">
+    <a
+      routerLink="/pages/portal-padres"
+      class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-400 transition block no-underline">
+      <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
+        <span class="material-icons">grading</span>
+      </div>
+      <h3 class="font-bold text-slate-900 text-base mb-1">Mis Materias y Boletín de Notas</h3>
+      <p class="text-sm text-slate-500 mb-4">
+        Consulta las asignaturas de tu grado, profesora titular, calificaciones por periodo y promedio definitivo.
+      </p>
+      <span class="text-xs font-bold text-indigo-600 inline-flex items-center gap-1">
+        Ver mis materias y notas <span class="material-icons text-sm">arrow_forward</span>
+      </span>
+    </a>
+
+    <a
+      routerLink="/pages/portal-padres"
+      class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-400 transition block no-underline">
+      <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+        <span class="material-icons">schedule</span>
+      </div>
+      <h3 class="font-bold text-slate-900 text-base mb-1">Mi Horario de Clases de la Semana</h3>
+      <p class="text-sm text-slate-500 mb-4">
+        Revisa tu horario semanal de Lunes a Viernes, tu salón asignado y los datos de tu Directora de Grupo.
+      </p>
+      <span class="text-xs font-bold text-emerald-600 inline-flex items-center gap-1">
+        Ver mi horario semanal <span class="material-icons text-sm">arrow_forward</span>
+      </span>
+    </a>
+  </div>
 </div>

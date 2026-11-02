@@ -108,7 +108,7 @@ export class LoginComponent implements OnInit {
             accion: 'Cerrar',
           },
         });
-        this.router.navigateByUrl(this.returnUrl);
+        this.redirigirSegunRol(res.usuario.rol.codigo);
       },
       error: () => {
         this.cargando = false;
@@ -134,12 +134,28 @@ export class LoginComponent implements OnInit {
             accion: 'Cerrar',
           },
         });
-        this.router.navigateByUrl('/pages/home');
+        this.redirigirSegunRol(res.usuario.rol.codigo);
       },
       error: () => {
         this.cargando = false;
       },
     });
+  }
+
+  private redirigirSegunRol(rolCodigo: string): void {
+    if (rolCodigo === 'DOCENTE') {
+      this.router.navigateByUrl('/pages/docentes');
+      return;
+    }
+    if (
+      rolCodigo === 'PADRE_ESTUDIANTE' ||
+      rolCodigo === 'PADRE' ||
+      rolCodigo === 'ESTUDIANTE'
+    ) {
+      this.router.navigateByUrl('/pages/portal-padres');
+      return;
+    }
+    this.router.navigateByUrl('/pages/home');
   }
 
   tieneError(form: FormGroup, controlName: string, errorName: string): boolean {

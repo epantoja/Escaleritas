@@ -3,10 +3,13 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
+  CalificacionPlanillaItemModel,
   CursoModel,
   DocenteModel,
   EstudianteModel,
+  HorarioClaseModel,
   MateriaModel,
+  PortalEstudianteResponseModel,
 } from '../models/academico.model';
 
 @Injectable({
@@ -18,7 +21,7 @@ export class AcademicoService {
   constructor(private http: HttpClient) {}
 
   // ==========================================================================
-  // 1. CURSOS Y MATERIAS (Jardín a 5° de Primaria)
+  // 1. CURSOS / SALONES Y DIRECTORA DE GRUPO
   // ==========================================================================
 
   obtenerCursos(): Observable<{ ok: boolean; cursos: CursoModel[] }> {
@@ -29,7 +32,12 @@ export class AcademicoService {
 
   actualizarCurso(
     id: string,
-    datos: Partial<CursoModel>
+    datos: Partial<{
+      nombre: string;
+      cupoMaximo: number;
+      aula: string;
+      directorDocenteId: string | null;
+    }>
   ): Observable<{ ok: boolean; mensaje: string; curso: CursoModel }> {
     return this.http.put<{ ok: boolean; mensaje: string; curso: CursoModel }>(
       `${this.baseUrl}/cursos/${id}`,
@@ -37,9 +45,20 @@ export class AcademicoService {
     );
   }
 
-  obtenerMaterias(): Observable<{ ok: boolean; materias: MateriaModel[] }> {
+  // ==========================================================================
+  // 2. CRUD DE MATERIAS
+  // ==========================================================================
+
+  obtenerMaterias(
+    busqueda?: string
+  ): Observable<{ ok: boolean; materias: MateriaModel[] }> {
+    let params = new HttpParams();
+    if (busqueda) {
+      params = params.set('busqueda', busqueda);
+    }
     return this.http.get<{ ok: boolean; materias: MateriaModel[] }>(
-      `${this.baseUrl}/materias`
+      `${this.baseUrl}/materias`,
+      { params }
     );
   }
 
@@ -53,8 +72,27 @@ export class AcademicoService {
     }>(`${this.baseUrl}/materias`, datos);
   }
 
+  actualizarMateria(
+    id: string,
+    datos: Partial<MateriaModel>
+  ): Observable<{ ok: boolean; mensaje: string; materia: MateriaModel }> {
+    return this.http.put<{
+      ok: boolean;
+      mensaje: string;
+      materia: MateriaModel;
+    }>(`${this.baseUrl}/materias/${id}`, datos);
+  }
+
+  eliminarMateria(
+    id: string
+  ): Observable<{ ok: boolean; id: string; mensaje: string }> {
+    return this.http.delete<{ ok: boolean; id: string; mensaje: string }>(
+      `${this.baseUrl}/materias/${id}`
+    );
+  }
+
   // ==========================================================================
-  // 2. CRUD DE ESTUDIANTES (MATRÍCULAS)
+  // 3. CRUD DE ESTUDIANTES (MATRÍCULAS)
   // ==========================================================================
 
   obtenerEstudiantes(filtros?: {
@@ -109,8 +147,20 @@ export class AcademicoService {
   }
 
   // ==========================================================================
-  // 3. CRUD DE DOCENTES Y ASIGNACIÓN DE CURSOS/MATERIAS (N:M)
+  // 4. CRUD DE DOCENTES Y CONFIGURACIÓN DE MATERIAS ENSEÑADAS
   // ==========================================================================
+
+  obtenerMiPerfilDocente(): Observable<{
+    ok: boolean;
+    docente: DocenteModel;
+    cursosDirigidos: CursoModel[];
+  }> {
+    return this.http.get<{
+      ok: boolean;
+      docente: DocenteModel;
+      cursosDirigidos: CursoModel[];
+    }>(`${this.baseUrl}/mi-perfil-docente`);
+  }
 
   obtenerDocentes(filtros?: {
     busqueda?: string;
@@ -188,5 +238,95 @@ export class AcademicoService {
       docente: DocenteModel;
     }>(`${this.baseUrl}/asignaciones/${asignacionId}`);
   }
-}
 
+  // ==========================================================================
+  // 5. HORARIOS SEMANALES Y CALIFICACIONES / PORTAL ESTUDIANTE
+  // ==========================================================================
+
+  obtenerHorarios(filtros?: {
+    docenteId?: string;
+    cursoId?: string;
+    asignacionId?: string;
+  }): Observable<{ ok: boolean; horarios: HorarioClaseModel[] }> {
+    let params = new HttpParams();
+    if (filtros?.docenteId) {
+      params = params.set('docenteId', filtros.docenteId);
+    }
+    if (filtros?.cursoId) {
+      params = params.set('cursoId', filtros.cursoId);
+    }
+    if (filtros?.asignacionId) {
+      params = params.set('asignacionId', filtros.asignacionId);
+    }
+
+    return this.http.get<{ ok: boolean; horarios: HorarioClaseModel[] }>(
+      `${this.baseUrl}/horarios`,
+      { params }
+    );
+  }
+
+  crearHorario(datos: {
+    asignacionId: string;
+    diaSemana: string;
+    horaInicio: string;
+    horaFin: string;
+    aula?: string;
+  }): Observable<{ ok: boolean; mensaje: string; horario: HorarioClaseModel }> {
+    return this.http.post<{
+      ok: boolean;
+      mensaje: string;
+      horario: HorarioClaseModel;
+    }>(`${this.baseUrl}/horarios`, datos);
+  }
+
+  eliminarHorario(
+    horarioId: string
+  ): Observable<{ ok: boolean; id: string; mensaje: string }> {
+    return this.http.delete<{ ok: boolean; id: string; mensaje: string }>(
+      `${this.baseUrl}/horarios/${horarioId}`
+    );
+  }
+
+  obtenerPlanillaCalificaciones(
+    cursoId: string,
+    materiaId: string
+  ): Observable<{ ok: boolean; planilla: CalificacionPlanillaItemModel[] }> {
+    const params = new HttpParams()
+      .set('cursoId', cursoId)
+      .set('materiaId', materiaId);
+    return this.http.get<{
+      ok: boolean;
+      planilla: CalificacionPlanillaItemModel[];
+    }>(`${this.baseUrl}/calificaciones`, { params });
+  }
+
+  guardarCalificacion(datos: {
+    estudianteId: string;
+    cursoId: string;
+    materiaId: string;
+    docenteId?: string | null;
+    notaP1?: number | null;
+    notaP2?: number | null;
+    notaP3?: number | null;
+    notaP4?: number | null;
+    observacion?: string | null;
+  }): Observable<{ ok: boolean; mensaje: string; calificacion: any }> {
+    return this.http.post<{ ok: boolean; mensaje: string; calificacion: any }>(
+      `${this.baseUrl}/calificaciones`,
+      datos
+    );
+  }
+
+  obtenerPortalEstudiante(
+    estudianteId?: string
+  ): Observable<PortalEstudianteResponseModel> {
+    let params = new HttpParams();
+    if (estudianteId) {
+      params = params.set('estudianteId', estudianteId);
+    }
+    return this.http.get<PortalEstudianteResponseModel>(
+      `${this.baseUrl}/portal-estudiante`,
+      { params }
+    );
+  }
+}

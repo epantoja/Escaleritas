@@ -1,0 +1,500 @@
+:host {
+  display: block;
+}
+
+.docente-wrapper {
+  max-width: 1340px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+.docente-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.docente-header h1 {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 6px 0;
+  color: #0f172a;
+}
+
+.docente-header p {
+  font-size: 13.5px;
+  color: #475569;
+  margin: 0;
+}
+
+.mono {
+  font-family: monospace;
+  font-weight: 700;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.admin-teacher-selector {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  min-width: 280px;
+}
+
+.admin-teacher-selector label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4338ca;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.admin-teacher-selector select {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  background: transparent;
+}
+
+.sub-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #e2e8f0;
+  padding: 5px;
+  border-radius: 14px;
+  margin-bottom: 22px;
+}
+
+.sub-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #475569;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sub-tab.active {
+  background: #ffffff;
+  color: #4338ca;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.two-col-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+.config-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.head-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.head-icon.indigo { background: #eef2ff; color: #4f46e5; }
+.head-icon.emerald { background: #ecfdf5; color: #059669; }
+.head-icon.sky { background: #f0f9ff; color: #0284c7; }
+
+.card-head h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 2px 0;
+}
+
+.card-head p {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.req {
+  color: #e11d48;
+}
+
+.input-box {
+  height: 42px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+}
+
+.input-box:focus-within {
+  border-color: #4f46e5;
+  background: #ffffff;
+}
+
+.input-box input,
+.input-box select {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13.5px;
+}
+
+.btn-indigo,
+.btn-emerald {
+  height: 42px;
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.btn-indigo { background: #4f46e5; }
+.btn-emerald { background: #059669; }
+
+.btn-indigo:disabled,
+.btn-emerald:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.taught-list {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.taught-list h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #475569;
+  margin: 0 0 10px 0;
+}
+
+.taught-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.taught-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.taught-item strong {
+  display: block;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.taught-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.remove-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.remove-btn:hover {
+  color: #e11d48;
+}
+
+/* Calendario Semanal */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.day-column {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.day-header {
+  background: #0f172a;
+  color: #ffffff;
+  text-align: center;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.day-slots {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 280px;
+}
+
+.slot-card {
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  border-left: 4px solid #4f46e5;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+}
+
+.slot-time {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #4f46e5;
+  margin-bottom: 4px;
+}
+
+.slot-del {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.slot-del:hover {
+  color: #e11d48;
+}
+
+.slot-subject {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.slot-course {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.slot-course .material-icons {
+  font-size: 14px;
+}
+
+.empty-day {
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 28px 8px;
+}
+
+/* Planilla de Calificaciones */
+.grades-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.subject-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subj-pill {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.subj-pill.active {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #312e81;
+}
+
+.subj-pill span {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.erp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.erp-table th {
+  text-align: left;
+  padding: 12px;
+  background: #f8fafc;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.erp-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.grade-input {
+  width: 72px;
+  height: 36px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.obs-input {
+  width: 100%;
+  min-width: 180px;
+  height: 36px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 10px;
+}
+
+.final-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  background: #f1f5f9;
+}
+
+.final-badge.pass { background: #dcfce7; color: #15803d; }
+.final-badge.fail { background: #fee2e2; color: #b91c1c; }
+
+.btn-save-row {
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.btn-save-row .material-icons {
+  font-size: 16px;
+}
+
+.empty-msg {
+  text-align: center;
+  padding: 32px;
+  color: #64748b;
+}
+
+@media (max-width: 1080px) {
+  .two-col-grid {
+    grid-template-columns: 1fr;
+  }
+  .week-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
