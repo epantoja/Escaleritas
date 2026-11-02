@@ -3,7 +3,7 @@
   <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
-        <mat-icon>school</mat-icon>
+        <span class="material-icons">school</span>
       </div>
       <div>
         <h1 class="text-lg font-bold text-slate-800 leading-tight">ERP Educativo Escaleritas</h1>
@@ -12,6 +12,13 @@
     </div>
 
     <div class="flex items-center gap-4" *ngIf="usuario">
+      <a
+        routerLink="/pages/administracion"
+        class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm transition">
+        <span class="material-icons text-base">account_tree</span>
+        <span>Ir a Gestión Académica</span>
+      </a>
+
       <div class="text-right hidden sm:block">
         <p class="text-sm font-semibold text-slate-800">{{ usuario.nombre }} {{ usuario.apellido }}</p>
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
@@ -22,7 +29,7 @@
         type="button"
         (click)="cerrarSesion()"
         class="px-3.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-medium flex items-center gap-1.5 transition">
-        <mat-icon class="text-base">logout</mat-icon>
+        <span class="material-icons text-base">logout</span>
         <span>Salir</span>
       </button>
     </div>
@@ -45,38 +52,53 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-      <!-- Tarjeta Admin -->
-      <div
-        *ngIf="loginService.tieneRol(['ADMIN'])"
-        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-        <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
-          <mat-icon>admin_panel_settings</mat-icon>
+      <!-- Tarjeta Directorio y Estructura Académica -->
+      <a
+        routerLink="/pages/administracion"
+        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 transition block no-underline">
+        <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
+          <span class="material-icons">diversity_3</span>
         </div>
-        <h3 class="font-bold text-slate-800 mb-1">Administración y Seguridad</h3>
-        <p class="text-sm text-slate-500">Gestión de usuarios, roles, matrículas y grados (Jardín a 5°).</p>
-      </div>
+        <h3 class="font-bold text-slate-800 mb-1">Directorio y Estructura Académica</h3>
+        <p class="text-sm text-slate-500 mb-3">
+          Matrícula de Estudiantes, Planta Docente y Cursos desde Jardín hasta 5° de Primaria.
+        </p>
+        <span class="text-xs font-bold text-indigo-600 inline-flex items-center gap-1">
+          Abrir módulo <span class="material-icons text-sm">arrow_forward</span>
+        </span>
+      </a>
 
       <!-- Tarjeta Docente -->
-      <div
-        *ngIf="loginService.tieneRol(['ADMIN', 'DOCENTE'])"
-        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
-          <mat-icon>menu_book</mat-icon>
+      <a
+        routerLink="/pages/administracion"
+        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-amber-300 transition block no-underline">
+        <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+          <span class="material-icons">co_present</span>
         </div>
-        <h3 class="font-bold text-slate-800 mb-1">Gestión Docente y Notas</h3>
-        <p class="text-sm text-slate-500">Registro de calificaciones, logros y asistencia diaria por curso.</p>
-      </div>
+        <h3 class="font-bold text-slate-800 mb-1">Asignación de Profesores y Materias</h3>
+        <p class="text-sm text-slate-500 mb-3">
+          Asigna docentes a múltiples grados y asignaturas con intensidad horaria semanal.
+        </p>
+        <span class="text-xs font-bold text-amber-600 inline-flex items-center gap-1">
+          Gestionar docentes <span class="material-icons text-sm">arrow_forward</span>
+        </span>
+      </a>
 
-      <!-- Tarjeta Padre / Estudiante -->
-      <div
-        *ngIf="loginService.tieneRol(['ADMIN', 'DOCENTE', 'PADRE_ESTUDIANTE', 'PADRE', 'ESTUDIANTE'])"
-        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
-        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
-          <mat-icon>family_restroom</mat-icon>
+      <!-- Tarjeta Cursos -->
+      <a
+        routerLink="/pages/administracion"
+        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-300 transition block no-underline">
+        <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+          <span class="material-icons">meeting_room</span>
         </div>
-        <h3 class="font-bold text-slate-800 mb-1">Portal Padres y Estudiantes</h3>
-        <p class="text-sm text-slate-500">Consulta de boletines académicos, observador y estado de pensiones.</p>
-      </div>
+        <h3 class="font-bold text-slate-800 mb-1">Grados Escolares (Jardín a 5°)</h3>
+        <p class="text-sm text-slate-500 mb-3">
+          Control de cupos disponibles, directores de grupo y aulas de Preescolar y Primaria.
+        </p>
+        <span class="text-xs font-bold text-emerald-600 inline-flex items-center gap-1">
+          Ver cursos <span class="material-icons text-sm">arrow_forward</span>
+        </span>
+      </a>
     </div>
   </main>
 </div>

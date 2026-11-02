@@ -1,6 +1,7 @@
 import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from '../guards/auth.guard';
 import { HomeComponent } from './home/home.component';
+import { AdministracionComponent } from './administracion/administracion.component';
 import { RolCodigo } from './models/login.model';
 
 export const routes: Routes = [
@@ -21,22 +22,26 @@ export const routes: Routes = [
   },
   {
     path: 'administracion',
-    component: HomeComponent,
+    component: AdministracionComponent,
     canActivate: [AuthGuard],
     data: {
-      pageTitle: 'Administración General',
-      roles: ['ADMIN'] as RolCodigo[],
-      permisos: ['USUARIOS_GESTIONAR'],
+      pageTitle: 'Directorio Escolar y Estructura Académica',
+      roles: [
+        'ADMIN',
+        'DOCENTE',
+        'PADRE_ESTUDIANTE',
+        'PADRE',
+        'ESTUDIANTE',
+      ] as RolCodigo[],
     },
   },
   {
     path: 'docentes',
-    component: HomeComponent,
+    component: AdministracionComponent,
     canActivate: [AuthGuard],
     data: {
       pageTitle: 'Gestión Académica Docente',
       roles: ['ADMIN', 'DOCENTE'] as RolCodigo[],
-      permisos: ['CALIFICACIONES_EDITAR'],
     },
   },
   {
@@ -46,7 +51,6 @@ export const routes: Routes = [
     data: {
       pageTitle: 'Portal de Padres y Estudiantes',
       roles: ['ADMIN', 'PADRE_ESTUDIANTE', 'PADRE', 'ESTUDIANTE'] as RolCodigo[],
-      permisos: ['CALIFICACIONES_VER'],
     },
   },
 ];

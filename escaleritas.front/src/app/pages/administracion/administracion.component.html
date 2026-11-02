@@ -1,0 +1,915 @@
+<div class="admin-layout">
+  <!-- ===================================================================== -->
+  <!-- BARRA SUPERIOR INSTITUCIONAL                                          -->
+  <!-- ===================================================================== -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-logo">
+        <span class="material-icons">school</span>
+      </div>
+      <div>
+        <h1 class="brand-name">ERP Educativo Escaleritas</h1>
+        <p class="brand-sub">Directorio Escolar y Estructura Académica · Jardín a 5° de Primaria</p>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <a routerLink="/pages/home" class="nav-pill">
+        <span class="material-icons">dashboard</span>
+        <span>Panel Principal</span>
+      </a>
+
+      <div class="user-chip" *ngIf="usuario">
+        <div class="user-info">
+          <span class="user-name">{{ usuario.nombre }} {{ usuario.apellido }}</span>
+          <span class="user-role">{{ usuario.rolNombre || usuario.rol }}</span>
+        </div>
+        <button type="button" class="logout-btn" (click)="cerrarSesion()">
+          <span class="material-icons">logout</span>
+          <span>Salir</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- CONTENIDO PRINCIPAL                                                   -->
+  <!-- ===================================================================== -->
+  <main class="admin-container">
+    <!-- TARJETAS DE INDICADORES RÁPIDOS (KPIs) -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-indigo">
+          <span class="material-icons">face</span>
+        </div>
+        <div>
+          <span class="kpi-label">Estudiantes Activos</span>
+          <strong class="kpi-value">{{ estudiantes.length }}</strong>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-emerald">
+          <span class="material-icons">co_present</span>
+        </div>
+        <div>
+          <span class="kpi-label">Planta Docente</span>
+          <strong class="kpi-value">{{ docentes.length }}</strong>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-amber">
+          <span class="material-icons">meeting_room</span>
+        </div>
+        <div>
+          <span class="kpi-label">Grados (Jardín a 5°)</span>
+          <strong class="kpi-value">{{ cursos.length }}</strong>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-sky">
+          <span class="material-icons">menu_book</span>
+        </div>
+        <div>
+          <span class="kpi-label">Materias / Áreas</span>
+          <strong class="kpi-value">{{ materias.length }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- NAVEGACIÓN POR PESTAÑAS DEL MÓDULO -->
+    <div class="module-tabs">
+      <button
+        type="button"
+        class="module-tab-btn"
+        [class.active]="tabActiva === 'ESTUDIANTES'"
+        (click)="cambiarTab('ESTUDIANTES')">
+        <span class="material-icons">diversity_3</span>
+        <span>Estudiantes y Matrículas</span>
+      </button>
+
+      <button
+        type="button"
+        class="module-tab-btn"
+        [class.active]="tabActiva === 'DOCENTES'"
+        (click)="cambiarTab('DOCENTES')">
+        <span class="material-icons">school</span>
+        <span>Docentes y Asignación Académica</span>
+      </button>
+
+      <button
+        type="button"
+        class="module-tab-btn"
+        [class.active]="tabActiva === 'CURSOS'"
+        (click)="cambiarTab('CURSOS')">
+        <span class="material-icons">account_tree</span>
+        <span>Estructura de Cursos (Jardín a 5°)</span>
+      </button>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 1: ESTUDIANTES Y MATRÍCULAS                                 -->
+    <!-- =================================================================== -->
+    <section *ngIf="tabActiva === 'ESTUDIANTES'" class="panel-card">
+      <div class="panel-header">
+        <div>
+          <h2>Directorio y Matrícula de Estudiantes</h2>
+          <p>Administra la matrícula de alumnos en los grados de Preescolar (Jardín, Transición) y Primaria (1° a 5°).</p>
+        </div>
+        <button
+          type="button"
+          class="btn-primary"
+          (click)="abrirModalNuevoEstudiante()">
+          <span class="material-icons">person_add</span>
+          <span>Matricular Estudiante</span>
+        </button>
+      </div>
+
+      <!-- Barra de Filtros de Estudiantes -->
+      <div class="filter-bar">
+        <div class="filter-item filter-search">
+          <span class="material-icons">search</span>
+          <input
+            type="text"
+            [(ngModel)]="filtroEstudianteBusqueda"
+            (keyup.enter)="filtrarEstudiantes()"
+            placeholder="Buscar por nombre, documento, código de matrícula o acudiente..." />
+        </div>
+
+        <div class="filter-item">
+          <select [(ngModel)]="filtroEstudianteCursoId" (change)="filtrarEstudiantes()">
+            <option value="">Todos los Cursos (Jardín a 5°)</option>
+            <option *ngFor="let c of cursos" [value]="c.id">
+              {{ c.nombre }} ({{ c.codigo }})
+            </option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <select [(ngModel)]="filtroEstudianteEstado" (change)="filtrarEstudiantes()">
+            <option value="">Todos los Estados</option>
+            <option value="MATRICULADO">Matriculado</option>
+            <option value="PREMATRICULADO">Prematriculado</option>
+            <option value="RETIRADO">Retirado</option>
+            <option value="GRADUADO">Graduado</option>
+          </select>
+        </div>
+
+        <button type="button" class="btn-secondary" (click)="filtrarEstudiantes()">
+          <span class="material-icons">filter_list</span>
+          <span>Filtrar</span>
+        </button>
+
+        <button type="button" class="btn-ghost" (click)="limpiarFiltrosEstudiantes()">
+          Limpiar
+        </button>
+      </div>
+
+      <!-- Tabla de Estudiantes -->
+      <div class="table-responsive">
+        <table class="erp-table">
+          <thead>
+            <tr>
+              <th>Matrícula</th>
+              <th>Estudiante</th>
+              <th>Documento</th>
+              <th>Grado / Curso</th>
+              <th>Padre / Acudiente</th>
+              <th>Estado</th>
+              <th class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let est of estudiantes">
+              <td>
+                <span class="code-badge">{{ est.codigoMatricula }}</span>
+              </td>
+              <td>
+                <div class="person-cell">
+                  <div class="avatar avatar-indigo">
+                    {{ est.nombres.charAt(0) }}{{ est.apellidos.charAt(0) }}
+                  </div>
+                  <div>
+                    <div class="person-name">{{ est.apellidos }}, {{ est.nombres }}</div>
+                    <div class="person-meta">EPS: {{ est.eps || 'No registrada' }} · RH: {{ est.tipoSangre || 'N/A' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="doc-text">{{ est.tipoDocumento }} {{ est.documento }}</div>
+                <div class="person-meta" *ngIf="est.fechaNacimiento">Nac: {{ est.fechaNacimiento }}</div>
+              </td>
+              <td>
+                <span class="grade-badge" [class.grade-pre]="est.curso?.nivel === 'PREESCOLAR'">
+                  {{ est.curso?.nombre || 'Sin asignar' }}
+                </span>
+              </td>
+              <td>
+                <div class="person-name">{{ est.acudienteNombre }}</div>
+                <div class="person-meta">
+                  {{ est.acudienteParentesco }} · Tel: {{ est.acudienteTelefono }}
+                </div>
+              </td>
+              <td>
+                <span
+                  class="status-pill"
+                  [class.status-active]="est.estadoMatricula === 'MATRICULADO'"
+                  [class.status-warn]="est.estadoMatricula === 'PREMATRICULADO'"
+                  [class.status-inactive]="est.estadoMatricula === 'RETIRADO'">
+                  {{ est.estadoMatricula }}
+                </span>
+              </td>
+              <td class="text-right">
+                <div class="action-group">
+                  <button
+                    type="button"
+                    class="icon-btn icon-btn-edit"
+                    title="Editar matrícula y datos"
+                    (click)="abrirModalEditarEstudiante(est)">
+                    <span class="material-icons">edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-btn icon-btn-delete"
+                    title="Retirar estudiante"
+                    (click)="retirarEstudiante(est)">
+                    <span class="material-icons">person_remove</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="estudiantes.length === 0">
+              <td colspan="7" class="empty-row">
+                <span class="material-icons empty-icon">school</span>
+                <p>No se encontraron estudiantes con los criterios seleccionados.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 2: DOCENTES Y ASIGNACIÓN DE GRADOS/MATERIAS (N:M)           -->
+    <!-- =================================================================== -->
+    <section *ngIf="tabActiva === 'DOCENTES'" class="panel-card">
+      <div class="panel-header">
+        <div>
+          <h2>Planta Docente y Asignación Académica (Relación N:M)</h2>
+          <p>Registra profesores y asígnales múltiples materias en los diferentes cursos desde Jardín hasta 5° de Primaria.</p>
+        </div>
+        <div class="header-btn-group">
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="abrirModalNuevaMateria()">
+            <span class="material-icons">library_add</span>
+            <span>Nueva Materia</span>
+          </button>
+          <button
+            type="button"
+            class="btn-emerald"
+            (click)="abrirModalNuevoDocente()">
+            <span class="material-icons">person_add_alt_1</span>
+            <span>Registrar Docente</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros de Docentes -->
+      <div class="filter-bar">
+        <div class="filter-item filter-search">
+          <span class="material-icons">search</span>
+          <input
+            type="text"
+            [(ngModel)]="filtroDocenteBusqueda"
+            (keyup.enter)="filtrarDocentes()"
+            placeholder="Buscar docente por nombre, documento, correo o especialidad..." />
+        </div>
+
+        <div class="filter-item">
+          <select [(ngModel)]="filtroDocenteCursoId" (change)="filtrarDocentes()">
+            <option value="">Filtrar por Grado Asignado (Todos)</option>
+            <option *ngFor="let c of cursos" [value]="c.id">
+              {{ c.nombre }} ({{ c.codigo }})
+            </option>
+          </select>
+        </div>
+
+        <button type="button" class="btn-secondary" (click)="filtrarDocentes()">
+          <span class="material-icons">filter_list</span>
+          <span>Filtrar</span>
+        </button>
+
+        <button type="button" class="btn-ghost" (click)="limpiarFiltrosDocentes()">
+          Limpiar
+        </button>
+      </div>
+
+      <!-- Tabla de Docentes -->
+      <div class="table-responsive">
+        <table class="erp-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Docente</th>
+              <th>Documento y Contacto</th>
+              <th>Especialidad / Título</th>
+              <th>Carga Académica (Cursos y Materias Asignadas)</th>
+              <th class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let doc of docentes">
+              <td>
+                <span class="code-badge">{{ doc.codigoDocente }}</span>
+              </td>
+              <td>
+                <div class="person-cell">
+                  <div class="avatar avatar-emerald">
+                    {{ doc.nombres.charAt(0) }}{{ doc.apellidos.charAt(0) }}
+                  </div>
+                  <div>
+                    <div class="person-name">{{ doc.apellidos }}, {{ doc.nombres }}</div>
+                    <div class="person-meta">Ingreso: {{ doc.fechaIngreso || 'Activo' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="doc-text">{{ doc.tipoDocumento }} {{ doc.documento }}</div>
+                <div class="person-meta">{{ doc.email }} · {{ doc.telefono || 'Sin tel.' }}</div>
+              </td>
+              <td>
+                <div class="person-name">{{ doc.especialidad }}</div>
+                <div class="person-meta">{{ doc.tituloAcademico || 'Licenciado(a)' }}</div>
+              </td>
+              <td>
+                <div class="assignment-chips" *ngIf="doc.asignaciones?.length; else sinCarga">
+                  <span
+                    *ngFor="let asig of doc.asignaciones"
+                    class="assignment-chip"
+                    [class.assignment-titular]="asig.esTitularCurso">
+                    <strong>{{ asig.curso?.nombre }}:</strong>
+                    <span>{{ asig.materia?.nombre }} ({{ asig.intensidadHoraria }}h)</span>
+                    <button
+                      type="button"
+                      class="chip-remove"
+                      title="Quitar esta asignación"
+                      (click)="quitarAsignacion(asig.id)">
+                      ×
+                    </button>
+                  </span>
+                </div>
+                <ng-template #sinCarga>
+                  <span class="person-meta italic">Sin cursos asignados aún</span>
+                </ng-template>
+              </td>
+              <td class="text-right">
+                <div class="action-group">
+                  <button
+                    type="button"
+                    class="btn-assign-inline"
+                    title="Asignar grado y materia al docente"
+                    (click)="abrirModalAsignarGradoMateria(doc)">
+                    <span class="material-icons">add_task</span>
+                    <span>Asignar Grado</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-btn icon-btn-edit"
+                    title="Editar docente"
+                    (click)="abrirModalEditarDocente(doc)">
+                    <span class="material-icons">edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-btn icon-btn-delete"
+                    title="Desvincular docente"
+                    (click)="desvincularDocente(doc)">
+                    <span class="material-icons">person_remove</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="docentes.length === 0">
+              <td colspan="6" class="empty-row">
+                <span class="material-icons empty-icon">co_present</span>
+                <p>No hay docentes registrados con los filtros actuales.</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 3: ESTRUCTURA DE CURSOS (JARDÍN A 5° DE PRIMARIA)           -->
+    <!-- =================================================================== -->
+    <section *ngIf="tabActiva === 'CURSOS'" class="courses-section">
+      <div class="courses-grid">
+        <div *ngFor="let c of cursos" class="course-card">
+          <div class="course-card-header">
+            <div>
+              <span
+                class="level-tag"
+                [class.level-pre]="c.nivel === 'PREESCOLAR'"
+                [class.level-pri]="c.nivel === 'PRIMARIA'">
+                {{ c.nivel }} · {{ c.codigo }}
+              </span>
+              <h3 class="course-title">{{ c.nombre }} (Grupo {{ c.grupo }})</h3>
+              <p class="course-aula">{{ c.aula || 'Aula Principal' }} · Año Lectivo {{ c.anioLectivo }}</p>
+            </div>
+            <div class="cupo-circle">
+              <strong>{{ c.estudiantes?.length || 0 }}/{{ c.cupoMaximo }}</strong>
+              <span>Cupos</span>
+            </div>
+          </div>
+
+          <!-- Barra de ocupación -->
+          <div class="progress-track">
+            <div class="progress-fill" [style.width.%]="porcentajeCupo(c)"></div>
+          </div>
+
+          <!-- Director de Grupo -->
+          <div class="director-box">
+            <span class="material-icons">supervisor_account</span>
+            <div>
+              <small>Director(a) de Grupo</small>
+              <strong *ngIf="c.directorGrupo; else sinDirector">
+                {{ c.directorGrupo.nombres }} {{ c.directorGrupo.apellidos }}
+              </strong>
+              <ng-template #sinDirector>
+                <span class="muted-text">Pendiente por asignar</span>
+              </ng-template>
+            </div>
+          </div>
+
+          <!-- Materias y Profesores del Curso -->
+          <div class="course-teachers">
+            <h4>Docentes y Materias en este Grado ({{ c.asignacionesDocentes?.length || 0 }})</h4>
+            <ul *ngIf="c.asignacionesDocentes?.length; else sinDocentesCurso">
+              <li *ngFor="let a of c.asignacionesDocentes">
+                <span class="subj-name">{{ a.materia?.nombre }}</span>
+                <span class="teacher-name">
+                  Prof. {{ a.docente?.nombres }} {{ a.docente?.apellidos }} ({{ a.intensidadHoraria }}h)
+                </span>
+              </li>
+            </ul>
+            <ng-template #sinDocentesCurso>
+              <p class="muted-text">Aún no se han asignado docentes a este grado.</p>
+            </ng-template>
+          </div>
+
+          <div class="course-card-footer">
+            <button
+              type="button"
+              class="btn-outline-indigo"
+              (click)="cambiarTab('ESTUDIANTES'); abrirModalNuevoEstudiante(c.id)">
+              <span class="material-icons">person_add</span>
+              <span>Matricular en {{ c.nombre }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: MATRICULAR / EDITAR ESTUDIANTE (FORMULARIO REACTIVO)         -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" *ngIf="mostrarModalEstudiante">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div>
+          <h3>{{ estudianteEditandoId ? 'Editar Matrícula de Estudiante' : 'Matricular Nuevo Estudiante' }}</h3>
+          <p>Completa la información académica, personal y del acudiente responsable.</p>
+        </div>
+        <button type="button" class="close-btn" (click)="mostrarModalEstudiante = false">×</button>
+      </div>
+
+      <form [formGroup]="estudianteForm" (ngSubmit)="guardarEstudiante()" class="modal-body" novalidate>
+        <div class="section-divider">1. Ubicación Académica (Grado Escolar)</div>
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Grado / Curso a Matricular <span class="req">*</span></label>
+            <div class="input-box">
+              <select formControlName="cursoId">
+                <option *ngFor="let c of cursos" [value]="c.id">
+                  {{ c.nombre }} - Grupo {{ c.grupo }} (Cupos: {{ c.estudiantes?.length || 0 }}/{{ c.cupoMaximo }})
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Estado de Matrícula <span class="req">*</span></label>
+            <div class="input-box">
+              <select formControlName="estadoMatricula">
+                <option value="MATRICULADO">MATRICULADO</option>
+                <option value="PREMATRICULADO">PREMATRICULADO</option>
+                <option value="RETIRADO">RETIRADO</option>
+                <option value="GRADUADO">GRADUADO</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider">2. Datos del Estudiante</div>
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Nombres del Estudiante <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(estudianteForm, 'nombres', 'required')">
+              <input type="text" formControlName="nombres" placeholder="Ej. Samuel David" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(estudianteForm, 'nombres', 'required')">
+              Los nombres son obligatorios.
+            </span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Apellidos del Estudiante <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(estudianteForm, 'apellidos', 'required')">
+              <input type="text" formControlName="apellidos" placeholder="Ej. Pantoja Rodríguez" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(estudianteForm, 'apellidos', 'required')">
+              Los apellidos son obligatorios.
+            </span>
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="field-group">
+            <label class="field-label">Tipo Doc. <span class="req">*</span></label>
+            <div class="input-box">
+              <select formControlName="tipoDocumento">
+                <option value="RC">Registro Civil (RC)</option>
+                <option value="TI">Tarjeta de Identidad (TI)</option>
+                <option value="NUIP">NUIP</option>
+                <option value="CE">Cédula Extranjería</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Número de Documento <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(estudianteForm, 'documento', 'required')">
+              <input type="text" formControlName="documento" placeholder="Ej. 1098765432" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(estudianteForm, 'documento', 'required')">
+              El documento es obligatorio.
+            </span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Fecha de Nacimiento</label>
+            <div class="input-box">
+              <input type="date" formControlName="fechaNacimiento" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="field-group">
+            <label class="field-label">EPS</label>
+            <div class="input-box">
+              <input type="text" formControlName="eps" placeholder="Ej. Sanitas / Sura" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Grupo Sanguíneo (RH)</label>
+            <div class="input-box">
+              <select formControlName="tipoSangre">
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Dirección de Residencia</label>
+            <div class="input-box">
+              <input type="text" formControlName="direccion" placeholder="Ej. Calle 45 # 12-30" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider">3. Datos del Padre de Familia o Acudiente</div>
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Nombre Completo del Acudiente <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(estudianteForm, 'acudienteNombre', 'required')">
+              <input type="text" formControlName="acudienteNombre" placeholder="Ej. Carolina Rodríguez" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(estudianteForm, 'acudienteNombre', 'required')">
+              El nombre del acudiente es obligatorio.
+            </span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Teléfono de Contacto <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(estudianteForm, 'acudienteTelefono', 'required')">
+              <input type="text" formControlName="acudienteTelefono" placeholder="Ej. 3104567890" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(estudianteForm, 'acudienteTelefono', 'required')">
+              El teléfono del acudiente es obligatorio.
+            </span>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Parentesco</label>
+            <div class="input-box">
+              <select formControlName="acudienteParentesco">
+                <option value="Madre">Madre</option>
+                <option value="Padre">Padre</option>
+                <option value="Madre / Padre">Madre / Padre</option>
+                <option value="Abuelo(a)">Abuelo(a)</option>
+                <option value="Acudiente Legal">Acudiente Legal</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Correo Electrónico del Acudiente</label>
+            <div class="input-box">
+              <input type="email" formControlName="acudienteEmail" placeholder="acudiente@correo.com" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" (click)="mostrarModalEstudiante = false">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="guardando">
+            <span class="material-icons">save</span>
+            <span>{{ guardando ? 'Guardando...' : (estudianteEditandoId ? 'Guardar Cambios' : 'Confirmar Matrícula') }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: REGISTRAR / EDITAR DOCENTE (FORMULARIO REACTIVO)             -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" *ngIf="mostrarModalDocente">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div>
+          <h3>{{ docenteEditandoId ? 'Editar Información del Docente' : 'Registrar Nuevo Docente' }}</h3>
+          <p>Ingresa los datos profesionales y de contacto del profesor.</p>
+        </div>
+        <button type="button" class="close-btn" (click)="mostrarModalDocente = false">×</button>
+      </div>
+
+      <form [formGroup]="docenteForm" (ngSubmit)="guardarDocente()" class="modal-body" novalidate>
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Nombres <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(docenteForm, 'nombres', 'required')">
+              <input type="text" formControlName="nombres" placeholder="Ej. Carlos Andrés" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(docenteForm, 'nombres', 'required')">
+              El nombre es obligatorio.
+            </span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Apellidos <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(docenteForm, 'apellidos', 'required')">
+              <input type="text" formControlName="apellidos" placeholder="Ej. Martínez López" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(docenteForm, 'apellidos', 'required')">
+              El apellido es obligatorio.
+            </span>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Tipo de Documento</label>
+            <div class="input-box">
+              <select formControlName="tipoDocumento">
+                <option value="CC">Cédula de Ciudadanía (CC)</option>
+                <option value="CE">Cédula de Extranjería (CE)</option>
+                <option value="PAS">Pasaporte</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Número de Documento <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(docenteForm, 'documento', 'required')">
+              <input type="text" formControlName="documento" placeholder="Ej. 79854123" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(docenteForm, 'documento', 'required')">
+              El documento es obligatorio.
+            </span>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Correo Institucional <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(docenteForm, 'email', 'required') || tieneError(docenteForm, 'email', 'email')">
+              <input type="email" formControlName="email" placeholder="docente@escaleritas.edu.co" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(docenteForm, 'email', 'required') || tieneError(docenteForm, 'email', 'email')">
+              Ingresa un correo electrónico válido.
+            </span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Teléfono / Celular</label>
+            <div class="input-box">
+              <input type="text" formControlName="telefono" placeholder="Ej. 3158901234" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Área de Especialidad <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(docenteForm, 'especialidad', 'required')">
+              <input type="text" formControlName="especialidad" placeholder="Ej. Matemáticas y Ciencias / Preescolar" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(docenteForm, 'especialidad', 'required')">
+              La especialidad es obligatoria.
+            </span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Título Académico</label>
+            <div class="input-box">
+              <input type="text" formControlName="tituloAcademico" placeholder="Ej. Licenciado en Pedagogía Infantil" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" (click)="mostrarModalDocente = false">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-emerald" [disabled]="guardando">
+            <span class="material-icons">save</span>
+            <span>{{ guardando ? 'Guardando...' : 'Guardar Docente' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 3: ASIGNAR DOCENTE A GRADO Y MATERIA (RELACIÓN N:M)             -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" *ngIf="mostrarModalAsignacion && docenteSeleccionadoAsignacion">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div>
+          <h3>Asignar Cursos y Materias al Profesor</h3>
+          <p>
+            Docente: <strong>{{ docenteSeleccionadoAsignacion.nombres }} {{ docenteSeleccionadoAsignacion.apellidos }}</strong>
+            ({{ docenteSeleccionadoAsignacion.especialidad }})
+          </p>
+        </div>
+        <button type="button" class="close-btn" (click)="mostrarModalAsignacion = false">×</button>
+      </div>
+
+      <form [formGroup]="asignacionForm" (ngSubmit)="guardarAsignacionDocente()" class="modal-body" novalidate>
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Seleccionar Grado / Curso (Jardín a 5°) <span class="req">*</span></label>
+            <div class="input-box">
+              <select formControlName="cursoId">
+                <option *ngFor="let c of cursos" [value]="c.id">
+                  {{ c.nombre }} - Grupo {{ c.grupo }} ({{ c.nivel }})
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Seleccionar Materia a Impartir <span class="req">*</span></label>
+            <div class="input-box">
+              <select formControlName="materiaId">
+                <option *ngFor="let m of materias" [value]="m.id">
+                  {{ m.nombre }} ({{ m.codigo }})
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Intensidad Horaria (Horas / Semana) <span class="req">*</span></label>
+            <div class="input-box">
+              <input type="number" min="1" max="30" formControlName="intensidadHoraria" />
+            </div>
+          </div>
+
+          <div class="field-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="esTitularCurso" />
+              <span>Designar como <strong>Director(a) de Grupo</strong> de este curso</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="current-assignments-box">
+          <h4>Carga Académica Actual del Docente</h4>
+          <div class="assignment-chips" *ngIf="docenteSeleccionadoAsignacion.asignaciones?.length; else sinAsignacionesModal">
+            <span
+              *ngFor="let a of docenteSeleccionadoAsignacion.asignaciones"
+              class="assignment-chip"
+              [class.assignment-titular]="a.esTitularCurso">
+              <strong>{{ a.curso?.nombre }}:</strong> {{ a.materia?.nombre }} ({{ a.intensidadHoraria }}h)
+              <button type="button" class="chip-remove" (click)="quitarAsignacion(a.id)">×</button>
+            </span>
+          </div>
+          <ng-template #sinAsignacionesModal>
+            <p class="muted-text">Este docente aún no tiene materias ni cursos asignados.</p>
+          </ng-template>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" (click)="mostrarModalAsignacion = false">
+            Cerrar
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="guardando">
+            <span class="material-icons">add_task</span>
+            <span>{{ guardando ? 'Asignando...' : 'Agregar Asignación al Docente' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 4: CREAR NUEVA MATERIA                                          -->
+  <!-- ===================================================================== -->
+  <div class="modal-backdrop" *ngIf="mostrarModalMateria">
+    <div class="modal-window modal-sm">
+      <div class="modal-header">
+        <div>
+          <h3>Registrar Nueva Materia / Asignatura</h3>
+          <p>Agrega una asignatura al plan de estudios institucional.</p>
+        </div>
+        <button type="button" class="close-btn" (click)="mostrarModalMateria = false">×</button>
+      </div>
+
+      <form [formGroup]="materiaForm" (ngSubmit)="guardarMateria()" class="modal-body" novalidate>
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Código <span class="req">*</span></label>
+            <div class="input-box">
+              <input type="text" formControlName="codigo" placeholder="Ej. INF-01" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Intensidad Horaria Semanal <span class="req">*</span></label>
+            <div class="input-box">
+              <input type="number" min="1" max="20" formControlName="intensidadHoraria" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Nombre de la Materia <span class="req">*</span></label>
+          <div class="input-box">
+            <input type="text" formControlName="nombre" placeholder="Ej. Tecnología e Informática" />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Área Académica</label>
+          <div class="input-box">
+            <input type="text" formControlName="area" placeholder="Ej. Tecnología" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" (click)="mostrarModalMateria = false">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="guardando">
+            <span>Guardar Materia</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+

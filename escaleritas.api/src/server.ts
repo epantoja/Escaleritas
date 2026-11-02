@@ -69,12 +69,14 @@ app.use((_req: any, res: any, next: any) => {
 
 // Importar rutas
 import authRoutes from './routes/auth.router';
+import academicoRoutes from './routes/academico.router';
 import loginRoutes from './routes/login.router';
 const appRoutes = require('./routes/app.router');
 
 // Rutas de la API
 app.use('/', appRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/academico', academicoRoutes);
 app.use('/login', loginRoutes); // Ruta de compatibilidad
 
 // Middleware centralizado de manejo de errores HTTP
