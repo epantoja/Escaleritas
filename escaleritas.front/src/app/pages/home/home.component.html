@@ -1,0 +1,82 @@
+<div class="min-h-screen bg-slate-50">
+  <!-- Barra superior -->
+  <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
+        <mat-icon>school</mat-icon>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-slate-800 leading-tight">ERP Educativo Escaleritas</h1>
+        <p class="text-xs text-slate-500">Jardín a 5° de Primaria · Panel Principal</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4" *ngIf="usuario">
+      <div class="text-right hidden sm:block">
+        <p class="text-sm font-semibold text-slate-800">{{ usuario.nombre }} {{ usuario.apellido }}</p>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+          {{ usuario.rolNombre || usuario.rol }}
+        </span>
+      </div>
+      <button
+        type="button"
+        (click)="cerrarSesion()"
+        class="px-3.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-medium flex items-center gap-1.5 transition">
+        <mat-icon class="text-base">logout</mat-icon>
+        <span>Salir</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenido según Rol y Permisos -->
+  <main class="max-w-6xl mx-auto p-6 space-y-6">
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <h2 class="text-base font-bold text-slate-800 mb-2">Permisos Activos en tu Sesión JWT</h2>
+      <div class="flex flex-wrap gap-2" *ngIf="usuario?.permisos?.length; else sinPermisos">
+        <span
+          *ngFor="let permiso of usuario?.permisos"
+          class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
+          {{ permiso }}
+        </span>
+      </div>
+      <ng-template #sinPermisos>
+        <p class="text-xs text-slate-500">Rol estándar asignado sin permisos adicionales.</p>
+      </ng-template>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- Tarjeta Admin -->
+      <div
+        *ngIf="loginService.tieneRol(['ADMIN'])"
+        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+        <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
+          <mat-icon>admin_panel_settings</mat-icon>
+        </div>
+        <h3 class="font-bold text-slate-800 mb-1">Administración y Seguridad</h3>
+        <p class="text-sm text-slate-500">Gestión de usuarios, roles, matrículas y grados (Jardín a 5°).</p>
+      </div>
+
+      <!-- Tarjeta Docente -->
+      <div
+        *ngIf="loginService.tieneRol(['ADMIN', 'DOCENTE'])"
+        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+          <mat-icon>menu_book</mat-icon>
+        </div>
+        <h3 class="font-bold text-slate-800 mb-1">Gestión Docente y Notas</h3>
+        <p class="text-sm text-slate-500">Registro de calificaciones, logros y asistencia diaria por curso.</p>
+      </div>
+
+      <!-- Tarjeta Padre / Estudiante -->
+      <div
+        *ngIf="loginService.tieneRol(['ADMIN', 'DOCENTE', 'PADRE_ESTUDIANTE', 'PADRE', 'ESTUDIANTE'])"
+        class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+          <mat-icon>family_restroom</mat-icon>
+        </div>
+        <h3 class="font-bold text-slate-800 mb-1">Portal Padres y Estudiantes</h3>
+        <p class="text-sm text-slate-500">Consulta de boletines académicos, observador y estado de pensiones.</p>
+      </div>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,39 @@
+{
+  "name": "backen-server",
+  "version": "1.0.0",
+  "description": "servidor de Angular",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon --watch src -e ts --exec ts-node src/server.ts",
+    "postinstall": "patch-package",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Erwin Pantoja España",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^4.17.17",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/usb": "^2.0.5",
+    "nodemon": "^3.1.14",
+    "patch-package": "^8.0.1",
+    "typescript": "^5.3.0-dev.20230821"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^18.0.9",
+    "escpos": "^3.0.0-alpha.6",
+    "escpos-usb": "^3.0.0-alpha.4",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.1",
+    "moment": "^2.29.4",
+    "pg": "^8.12.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.32.1",
+    "sqlite3": "^5.1.6",
+    "usb": "^2.15.0",
+    "uuidv4": "^6.2.13"
+  }
+}

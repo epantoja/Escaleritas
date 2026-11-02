@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+      "target": "ES6",                 // Versión de JavaScript objetivo
+      "module": "commonjs",            // Sistema de módulos (Node.js usa commonjs)
+      "strict": true,                  // Activar todas las verificaciones estrictas
+      "esModuleInterop": true,         // Permite importar módulos con `default` y `require`
+      "forceConsistentCasingInFileNames": true,
+      "skipLibCheck": true,            // Omitir verificación de tipos de librerías
+      "outDir": "./dist",              // Carpeta de salida para el código compilado
+      "rootDir": "./src",              // Carpeta raíz del proyecto
+      "typeRoots": ["./src/types", "./node_modules/@types"]
+    },
+    "include": ["src/**/*"],           // Archivos que incluirá el compilador
+    "exclude": ["node_modules", "dist"] // Archivos a excluir
+  }

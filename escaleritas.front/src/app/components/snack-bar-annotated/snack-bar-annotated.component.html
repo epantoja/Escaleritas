@@ -1,0 +1,6 @@
+<span class="example-pizza-party" matSnackBarLabel *ngFor="let err of mensajes; let i = index">
+  {{i + 1}} - {{err}}
+</span>
+<span matSnackBarActions>
+  <button mat-button matSnackBarAction (click)="snackBarRef.dismissWithAction()">{{data.accion}}</button>
+</span>
