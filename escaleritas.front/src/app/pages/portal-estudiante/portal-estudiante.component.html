@@ -216,12 +216,10 @@
     <section *ngIf="vistaActiva === 'HORARIO'" class="portal-card">
       <div class="card-title-row">
         <div>
-          <h2>Horario de Clases de la Semana — {{ curso.nombre }} (Grupo {{ curso.grupo }})</h2>
-          <p *ngIf="esCursoPreescolar">
-            Jornada Transición / Preescolar: <strong>7:30 AM a 12:00 PM</strong> · Descanso de 30 minutos (<strong>09:30 AM - 10:00 AM</strong>).
-          </p>
-          <p *ngIf="!esCursoPreescolar">
-            Jornada Salones Superiores (Primaria): <strong>7:00 AM a 1:00 PM</strong> · Descanso de 30 minutos (<strong>10:00 AM - 10:30 AM</strong>).
+          <h2>Horario Único de Clases de la Semana — {{ curso.nombre }} (Grupo {{ curso.grupo }})</h2>
+          <p>
+            Jornada Escolar ({{ curso.nombre }}): <strong>{{ horaEntradaCurso }} a {{ horaSalidaCurso }}</strong> ·
+            Descanso del salón: <strong>{{ horaInicioDescansoCurso }} - {{ horaFinDescansoCurso }}</strong>.
           </p>
         </div>
       </div>
@@ -243,12 +241,12 @@
               </div>
             </div>
 
-            <!-- Bloque fijo de Descanso de 30 minutos -->
+            <!-- Bloque de Descanso Parametrizado del Salón -->
             <div class="recess-item">
               <span class="material-icons">restaurant</span>
               <div>
-                <strong>Descanso (30 min)</strong>
-                <small>{{ esCursoPreescolar ? '09:30 - 10:00 AM' : '10:00 - 10:30 AM' }}</small>
+                <strong>Descanso Escolar</strong>
+                <small>{{ horaInicioDescansoCurso }} - {{ horaFinDescansoCurso }}</small>
               </div>
             </div>
 

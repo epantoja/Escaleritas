@@ -37,6 +37,7 @@ export class DocentesPanelComponent implements OnInit {
   cursos: CursoModel[] = [];
   materias: MateriaModel[] = [];
   horariosDocente: HorarioClaseModel[] = [];
+  salonHorarioFiltroId = '';
 
   salonCalificandoId = '';
   asignacionCalificando: AsignacionDocenteModel | null = null;
@@ -138,11 +139,97 @@ export class DocentesPanelComponent implements OnInit {
     );
   }
 
+  private aMinutos(hhmm: string): number {
+    const [h, m] = (hhmm || '00:00').split(':').map((v) => Number(v) || 0);
+    return h * 60 + m;
+  }
+
+  private aHHMM(totalMin: number): string {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  private generarBloquesTramo(inicio: string, fin: string): BloqueHorarioConfig[] {
+    const res: BloqueHorarioConfig[] = [];
+    let cursor = this.aMinutos(inicio);
+    const limite = this.aMinutos(fin);
+    while (cursor < limite) {
+      const restante = limite - cursor;
+      const duracion = restante >= 60 ? 60 : restante;
+      const sig = cursor + duracion;
+      const hIni = this.aHHMM(cursor);
+      const hFin = this.aHHMM(sig);
+      res.push({
+        inicio: hIni,
+        fin: hFin,
+        etiqueta: `${hIni} - ${hFin} (${duracion} min)`,
+      });
+      cursor = sig;
+    }
+    return res;
+  }
+
+  get cursoSeleccionadoHorario(): CursoModel | undefined {
+    const cursoId =
+      this.salonHorarioFiltroId || this.asignacionHorarioSeleccionada?.cursoId;
+    return this.cursos.find((c) => c.id === cursoId);
+  }
+
+  get horaEntradaSalonActivo(): string {
+    const c = this.cursoSeleccionadoHorario || this.asignacionHorarioSeleccionada?.curso;
+    if (c?.horaEntrada) {
+      return c.horaEntrada;
+    }
+    return this.esAsignacionPreescolar ? '07:30' : '07:00';
+  }
+
+  get horaSalidaSalonActivo(): string {
+    const c = this.cursoSeleccionadoHorario || this.asignacionHorarioSeleccionada?.curso;
+    if (c?.horaSalida) {
+      return c.horaSalida;
+    }
+    return this.esAsignacionPreescolar ? '12:00' : '13:00';
+  }
+
+  get horaInicioDescansoSalonActivo(): string {
+    const c = this.cursoSeleccionadoHorario || this.asignacionHorarioSeleccionada?.curso;
+    if (c?.horaInicioDescanso) {
+      return c.horaInicioDescanso;
+    }
+    return this.esAsignacionPreescolar ? '09:30' : '10:00';
+  }
+
+  get horaFinDescansoSalonActivo(): string {
+    const c = this.cursoSeleccionadoHorario || this.asignacionHorarioSeleccionada?.curso;
+    if (c?.horaFinDescanso) {
+      return c.horaFinDescanso;
+    }
+    return this.esAsignacionPreescolar ? '10:00' : '10:30';
+  }
+
   /**
-   * Devuelve los bloques horarios según si el salón seleccionado es Transición/Preescolar (7:30-12:00)
-   * o Salones Superiores de Primaria (7:00-13:00)
+   * Devuelve los bloques horarios según la jornada del salón (7:30-12:00 para Jardín/Transición;
+   * 7:00-13:00 para 1° a 5°) y el descanso parametrizado del salón.
    */
   get bloquesHoraDisponibles(): BloqueHorarioConfig[] {
+    const entrada = this.horaEntradaSalonActivo;
+    const salida = this.horaSalidaSalonActivo;
+    const descIni = this.horaInicioDescansoSalonActivo;
+    const descFin = this.horaFinDescansoSalonActivo;
+
+    const antes = this.generarBloquesTramo(entrada, descIni).map((b, i) => ({
+      ...b,
+      etiqueta: `${b.inicio} - ${b.fin} (${i + 1}° Bloque - Antes del Descanso)`,
+    }));
+    const despues = this.generarBloquesTramo(descFin, salida).map((b, i) => ({
+      ...b,
+      etiqueta: `${b.inicio} - ${b.fin} (${antes.length + i + 1}° Bloque - Post Descanso)`,
+    }));
+    const generados = [...antes, ...despues];
+    if (generados.length > 0) {
+      return generados;
+    }
     return this.esAsignacionPreescolar
       ? this.bloquesTransicionPreescolar
       : this.bloquesPrimariaSuperiores;
@@ -255,13 +342,22 @@ export class DocentesPanelComponent implements OnInit {
     if (!this.docenteActivo) {
       return;
     }
-    this.academicoService
-      .obtenerHorarios({ docenteId: this.docenteActivo.id })
-      .subscribe({
-        next: (res) => {
-          this.horariosDocente = res.horarios || [];
-        },
-      });
+    const filtros: { docenteId?: string; cursoId?: string } = {};
+    if (this.salonHorarioFiltroId) {
+      filtros.cursoId = this.salonHorarioFiltroId;
+    } else {
+      filtros.docenteId = this.docenteActivo.id;
+    }
+    this.academicoService.obtenerHorarios(filtros).subscribe({
+      next: (res) => {
+        this.horariosDocente = res.horarios || [];
+      },
+    });
+  }
+
+  cambiarFiltroSalonHorario(cursoId: string): void {
+    this.salonHorarioFiltroId = cursoId;
+    this.cargarHorariosDocente();
   }
 
   // ==========================================================================
@@ -353,14 +449,14 @@ export class DocentesPanelComponent implements OnInit {
   }
 
   horariosAntesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
-    const limiteDescanso = this.esAsignacionPreescolar ? '09:30' : '10:00';
+    const limiteDescanso = this.horaInicioDescansoSalonActivo;
     return this.horariosDocente
       .filter((h) => h.diaSemana === dia && h.horaInicio < limiteDescanso)
       .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
   }
 
   horariosDespuesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
-    const limiteDescanso = this.esAsignacionPreescolar ? '09:30' : '10:00';
+    const limiteDescanso = this.horaInicioDescansoSalonActivo;
     return this.horariosDocente
       .filter((h) => h.diaSemana === dia && h.horaInicio >= limiteDescanso)
       .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));

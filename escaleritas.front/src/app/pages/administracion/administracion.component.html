@@ -84,6 +84,15 @@
         <span class="material-icons">meeting_room</span>
         <span>Salones y Directora de Grupo (Jardín a 5°)</span>
       </button>
+
+      <button
+        type="button"
+        class="module-tab-btn"
+        [class.active]="tabActiva === 'HORARIO_SALON'"
+        (click)="cambiarTab('HORARIO_SALON')">
+        <span class="material-icons">calendar_month</span>
+        <span>Horario Único por Salón y Descanso</span>
+      </button>
     </div>
 
     <!-- =================================================================== -->
@@ -414,7 +423,7 @@
               </span>
               <h3 class="course-title">{{ c.nombre }} (Grupo {{ c.grupo }})</h3>
               <p class="course-aula">{{ c.aula || 'Salón Principal' }} · Año Lectivo {{ c.anioLectivo }}</p>
-              <div style="margin-top: 6px;">
+              <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px;">
                 <span
                   *ngIf="esSalonCaritas(c)"
                   class="status-pill status-active"
@@ -426,6 +435,11 @@
                   class="status-pill"
                   style="font-size: 11px; background: #e0e7ff; color: #3730a3;">
                   🔢 Calificación Numérica: 1.0 a 5.0
+                </span>
+                <span
+                  class="status-pill"
+                  style="font-size: 11px; background: #ecfdf5; color: #065f46;">
+                  🕒 Jornada {{ horaEntradaSalon(c) }} - {{ horaSalidaSalon(c) }} (Descanso {{ horaInicioDescansoSalon(c) }} - {{ horaFinDescansoSalon(c) }})
                 </span>
               </div>
             </div>
@@ -479,14 +493,348 @@
             </ng-template>
           </div>
 
-          <div class="course-card-footer">
+          <div class="course-card-footer" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button
+              type="button"
+              class="btn-primary"
+              style="flex: 1; justify-content: center;"
+              (click)="irAHorarioSalon(c)">
+              <span class="material-icons">calendar_month</span>
+              <span>Horario Único del Salón</span>
+            </button>
             <button
               type="button"
               class="btn-outline-indigo"
+              style="flex: 1; justify-content: center;"
               (click)="cambiarTab('ESTUDIANTES'); abrirModalNuevoEstudiante(c.id)">
               <span class="material-icons">person_add</span>
-              <span>Matricular en {{ c.nombre }}</span>
+              <span>Matricular</span>
             </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- PESTAÑA 4: HORARIO ÚNICO POR SALÓN, DESCANSO Y PROFESORAS           -->
+    <!-- =================================================================== -->
+    <section *ngIf="tabActiva === 'HORARIO_SALON'" class="panel-card">
+      <div class="panel-header">
+        <div>
+          <h2>Horario Único por Salón, Descanso Parametrizable y Asignación de Profesoras</h2>
+          <p>
+            Cada salón tiene un único horario semanal: Jardín y Transición entran a las <strong>7:30 AM</strong> y salen a las <strong>12:00 PM</strong>;
+            Grados 1° a 5° entran a las <strong>7:00 AM</strong> y salen a la <strong>1:00 PM</strong>.
+            Parametriza el descanso y asigna la profesora de cada materia.
+          </p>
+        </div>
+      </div>
+
+      <!-- SELECTOR DE SALÓN (JARDÍN A 5°) -->
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+        <button
+          *ngFor="let c of cursos"
+          type="button"
+          (click)="seleccionarSalonHorario(c.id)"
+          [style.border]="salonHorarioSeleccionadoId === c.id ? '2px solid #4f46e5' : '1px solid #cbd5e1'"
+          [style.background]="salonHorarioSeleccionadoId === c.id ? '#eef2ff' : '#ffffff'"
+          style="display: flex; flex-direction: column; align-items: flex-start; padding: 10px 14px; border-radius: 12px; cursor: pointer; min-width: 155px; text-align: left;">
+          <div style="display: flex; align-items: center; gap: 6px; width: 100%; justify-content: space-between;">
+            <strong style="font-size: 13px; color: #0f172a;">{{ c.nombre }}</strong>
+            <span
+              style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px;"
+              [style.background]="esSalonPreescolar(c) ? '#fef3c7' : '#e0e7ff'"
+              [style.color]="esSalonPreescolar(c) ? '#92400e' : '#3730a3'">
+              {{ horaEntradaSalon(c) }} - {{ horaSalidaSalon(c) }}
+            </span>
+          </div>
+          <span style="font-size: 11px; color: #475569; margin-top: 3px;">
+            Directora: {{ c.directorGrupo ? ('Prof. ' + c.directorGrupo.nombres + ' ' + c.directorGrupo.apellidos) : 'Sin asignar' }}
+          </span>
+          <span style="font-size: 11px; color: #b45309; margin-top: 2px;">
+            ☕ Descanso: {{ horaInicioDescansoSalon(c) }} - {{ horaFinDescansoSalon(c) }}
+          </span>
+        </button>
+      </div>
+
+      <div *ngIf="salonHorarioActual as salon" style="display: grid; grid-template-columns: 370px 1fr; gap: 20px; align-items: start;">
+        <!-- COLUMNA IZQUIERDA: PARAMETRIZAR DESCANSO + DIRECTORA + MATERIAS DE LA SEMANA -->
+        <div style="display: flex; flex-direction: column; gap: 18px;">
+          <!-- CARD 1: PARÁMETROS DEL SALÓN (DESCANSO PARAMETRIZABLE Y DIRECTORA DE GRUPO) -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+              <span class="material-icons" style="color: #4f46e5;">tune</span>
+              <div>
+                <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #0f172a;">
+                  1. Parámetros del Salón — {{ salon.nombre }}
+                </h3>
+                <p style="margin: 0; font-size: 12px; color: #64748b;">
+                  Jornada {{ esSalonPreescolar(salon) ? 'Preescolar (7:30 AM a 12:00 PM)' : 'Primaria 1° a 5° (7:00 AM a 1:00 PM)' }}
+                </p>
+              </div>
+            </div>
+
+            <form [formGroup]="configSalonForm" (ngSubmit)="guardarParametrosSalonHorario()" novalidate>
+              <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 12px; color: #312e81;">
+                <div>
+                  <strong>Horario de Entrada y Salida ({{ salon.nombre }}):</strong>
+                  {{ esSalonPreescolar(salon) ? '07:30 AM a 12:00 PM' : '07:00 AM a 01:00 PM (13:00)' }}
+                </div>
+              </div>
+
+              <div class="field-group" style="margin-bottom: 10px;">
+                <label class="field-label">Profesora Directora de Grupo del Salón</label>
+                <div class="input-box">
+                  <select formControlName="directorDocenteId">
+                    <option value="">— Seleccionar Directora de Grupo —</option>
+                    <option *ngFor="let d of docentes" [value]="d.id">
+                      Prof. {{ d.nombres }} {{ d.apellidos }} ({{ d.especialidad }})
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-grid-2" style="margin-bottom: 10px;">
+                <div class="field-group">
+                  <label class="field-label">Inicio Descanso <span class="req">*</span></label>
+                  <div class="input-box">
+                    <input
+                      type="time"
+                      formControlName="horaInicioDescanso"
+                      [min]="horaEntradaSalon(salon)"
+                      [max]="horaSalidaSalon(salon)" />
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <label class="field-label">Fin Descanso <span class="req">*</span></label>
+                  <div class="input-box">
+                    <input
+                      type="time"
+                      formControlName="horaFinDescanso"
+                      [min]="horaEntradaSalon(salon)"
+                      [max]="horaSalidaSalon(salon)" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="field-group" style="margin-bottom: 12px;">
+                <label class="field-label">Sistema de Calificación del Salón</label>
+                <div class="input-box">
+                  <select formControlName="tipoCalificacion">
+                    <option value="CARITAS">😊 Caritas — :) Bien / :| Normal (Jardín y Transición)</option>
+                    <option value="NUMERICA">🔢 Numérica — 1.0 a 5.0 (Grados 1° al 5°)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;" [disabled]="guardando">
+                <span class="material-icons">save</span>
+                <span>Guardar Descanso y Directora de {{ salon.nombre }}</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- CARD 2: PROGRAMAR MATERIA Y ASIGNAR PROFESORA EN EL HORARIO DEL SALÓN -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+              <span class="material-icons" style="color: #059669;">more_time</span>
+              <div>
+                <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #0f172a;">
+                  2. Asignar Materia y Profesora al Horario
+                </h3>
+                <p style="margin: 0; font-size: 12px; color: #64748b;">
+                  Una profesora puede enseñar varias materias en este u otros salones.
+                </p>
+              </div>
+            </div>
+
+            <form [formGroup]="horarioSalonForm" (ngSubmit)="agregarBloqueHorarioSalon()" novalidate>
+              <div class="field-group" style="margin-bottom: 10px;">
+                <label class="field-label">Día de la Semana <span class="req">*</span></label>
+                <div class="input-box">
+                  <select formControlName="diaSemana">
+                    <option *ngFor="let d of diasSemana" [value]="d.codigo">{{ d.etiqueta }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field-group" style="margin-bottom: 10px;">
+                <label class="field-label">Bloque Sugerido (Según Jornada y Descanso)</label>
+                <div class="input-box">
+                  <select
+                    formControlName="franjaIndex"
+                    (change)="alCambiarFranjaSalon($any($event.target).value)">
+                    <option *ngFor="let f of franjasSugeridasSalonActual; let i = index" [value]="i">
+                      {{ f.etiqueta }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-grid-2" style="margin-bottom: 10px;">
+                <div class="field-group">
+                  <label class="field-label">Hora Inicio <span class="req">*</span></label>
+                  <div class="input-box">
+                    <input
+                      type="time"
+                      formControlName="horaInicio"
+                      [min]="horaEntradaSalon(salon)"
+                      [max]="horaSalidaSalon(salon)" />
+                  </div>
+                </div>
+                <div class="field-group">
+                  <label class="field-label">Hora Fin <span class="req">*</span></label>
+                  <div class="input-box">
+                    <input
+                      type="time"
+                      formControlName="horaFin"
+                      [min]="horaEntradaSalon(salon)"
+                      [max]="horaSalidaSalon(salon)" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="field-group" style="margin-bottom: 10px;">
+                <label class="field-label">Materia de la Semana <span class="req">*</span></label>
+                <div class="input-box">
+                  <select formControlName="materiaId">
+                    <option *ngFor="let m of materias" [value]="m.id">
+                      {{ m.nombre }} ({{ m.codigo }})
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field-group" style="margin-bottom: 12px;">
+                <label class="field-label">Profesora Asignada a esta Materia <span class="req">*</span></label>
+                <div class="input-box">
+                  <select formControlName="docenteId">
+                    <option *ngFor="let doc of docentes" [value]="doc.id">
+                      Prof. {{ doc.nombres }} {{ doc.apellidos }} ({{ doc.especialidad }})
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-emerald" style="width: 100%; justify-content: center;" [disabled]="guardando">
+                <span class="material-icons">add_circle</span>
+                <span>Agregar al Horario Único de {{ salon.nombre }}</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: TABLERO DEL HORARIO ÚNICO SEMANAL DEL SALÓN -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+            <div>
+              <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #0f172a;">
+                Horario Único Semanal — {{ salon.nombre }} ({{ salon.aula || 'Salón Principal' }})
+              </h3>
+              <p style="margin: 4px 0 0; font-size: 12px; color: #475569;">
+                Jornada: <strong>{{ horaEntradaSalon(salon) }} a {{ horaSalidaSalon(salon) }}</strong> ·
+                Descanso parametrizado: <strong>{{ horaInicioDescansoSalon(salon) }} a {{ horaFinDescansoSalon(salon) }}</strong> ·
+                Directora de Grupo:
+                <strong>
+                  {{ salon.directorGrupo ? ('Prof. ' + salon.directorGrupo.nombres + ' ' + salon.directorGrupo.apellidos) : 'Sin asignar' }}
+                </strong>
+              </p>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; overflow-x: auto;">
+            <div
+              *ngFor="let d of diasSemana"
+              style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+              <div style="background: #1e293b; color: #ffffff; font-weight: 700; font-size: 13px; text-align: center; padding: 8px;">
+                {{ d.etiqueta }}
+              </div>
+
+              <div style="padding: 8px; display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                <!-- Bloques ANTES del descanso parametrizado -->
+                <div
+                  *ngFor="let h of horariosSalonAntesDescanso(d.codigo)"
+                  style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #4f46e5; border-radius: 8px; padding: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; font-weight: 800; color: #4f46e5;">
+                      {{ h.horaInicio }} - {{ h.horaFin }}
+                    </span>
+                    <button
+                      type="button"
+                      title="Eliminar bloque"
+                      (click)="eliminarBloqueHorarioSalon(h.id)"
+                      style="background: none; border: none; color: #ef4444; cursor: pointer; font-weight: 800; font-size: 14px;">
+                      ×
+                    </button>
+                  </div>
+                  <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin: 4px 0;">
+                    {{ h.materia?.nombre }}
+                  </div>
+                  <div style="margin-top: 4px;">
+                    <label style="font-size: 10px; color: #64748b; display: block;">Profesora asignada:</label>
+                    <select
+                      [ngModel]="h.docenteId"
+                      (ngModelChange)="cambiarProfesoraDeBloqueHorario(h, $event)"
+                      style="width: 100%; font-size: 11px; padding: 3px 5px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b;">
+                      <option *ngFor="let doc of docentes" [value]="doc.id">
+                        Prof. {{ doc.nombres }} {{ doc.apellidos }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Bloque de DESCANSO PARAMETRIZABLE del salón -->
+                <div
+                  style="background: #fffbeb; border: 1px dashed #f59e0b; border-radius: 8px; padding: 8px; display: flex; align-items: center; gap: 6px;">
+                  <span class="material-icons" style="font-size: 16px; color: #d97706;">free_breakfast</span>
+                  <div>
+                    <div style="font-size: 11px; font-weight: 800; color: #92400e;">Descanso Escolar</div>
+                    <div style="font-size: 11px; color: #b45309;">
+                      {{ horaInicioDescansoSalon(salon) }} - {{ horaFinDescansoSalon(salon) }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Bloques DESPUÉS del descanso parametrizado -->
+                <div
+                  *ngFor="let h of horariosSalonDespuesDescanso(d.codigo)"
+                  style="background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #059669; border-radius: 8px; padding: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; font-weight: 800; color: #059669;">
+                      {{ h.horaInicio }} - {{ h.horaFin }}
+                    </span>
+                    <button
+                      type="button"
+                      title="Eliminar bloque"
+                      (click)="eliminarBloqueHorarioSalon(h.id)"
+                      style="background: none; border: none; color: #ef4444; cursor: pointer; font-weight: 800; font-size: 14px;">
+                      ×
+                    </button>
+                  </div>
+                  <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin: 4px 0;">
+                    {{ h.materia?.nombre }}
+                  </div>
+                  <div style="margin-top: 4px;">
+                    <label style="font-size: 10px; color: #64748b; display: block;">Profesora asignada:</label>
+                    <select
+                      [ngModel]="h.docenteId"
+                      (ngModelChange)="cambiarProfesoraDeBloqueHorario(h, $event)"
+                      style="width: 100%; font-size: 11px; padding: 3px 5px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b;">
+                      <option *ngFor="let doc of docentes" [value]="doc.id">
+                        Prof. {{ doc.nombres }} {{ doc.apellidos }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                <div
+                  *ngIf="horariosSalonPorDia(d.codigo).length === 0"
+                  style="font-size: 11px; color: #94a3b8; text-align: center; padding: 10px 4px;">
+                  Sin materias programadas este día
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -968,6 +1316,30 @@
             <label class="field-label">Cupo Máximo de Estudiantes <span class="req">*</span></label>
             <div class="input-box">
               <input type="number" min="1" max="50" formControlName="cupoMaximo" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Hora Inicio Descanso <span class="req">*</span></label>
+            <div class="input-box">
+              <input
+                type="time"
+                formControlName="horaInicioDescanso"
+                [min]="horaEntradaSalon(cursoSeleccionadoDirectora)"
+                [max]="horaSalidaSalon(cursoSeleccionadoDirectora)" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Hora Fin Descanso <span class="req">*</span></label>
+            <div class="input-box">
+              <input
+                type="time"
+                formControlName="horaFinDescanso"
+                [min]="horaEntradaSalon(cursoSeleccionadoDirectora)"
+                [max]="horaSalidaSalon(cursoSeleccionadoDirectora)" />
             </div>
           </div>
         </div>

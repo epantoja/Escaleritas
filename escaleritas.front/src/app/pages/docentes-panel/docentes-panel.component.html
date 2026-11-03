@@ -147,13 +147,15 @@
         <!-- Aviso dinámico de jornada según si es Transición/Preescolar o Salones Superiores -->
         <div class="schedule-rule-banner" [class.preescolar]="esAsignacionPreescolar">
           <span class="material-icons">info</span>
-          <div *ngIf="esAsignacionPreescolar">
-            <strong>Jornada Transición / Preescolar: 7:30 AM a 12:00 PM</strong>
-            <span>Incluye 30 minutos de descanso de 09:30 AM a 10:00 AM.</span>
-          </div>
-          <div *ngIf="!esAsignacionPreescolar">
-            <strong>Jornada Salones Superiores (1° a 5°): 7:00 AM a 1:00 PM</strong>
-            <span>Incluye 30 minutos de descanso de 10:00 AM a 10:30 AM.</span>
+          <div>
+            <strong>
+              Jornada {{ asignacionHorarioSeleccionada?.curso?.nombre || (esAsignacionPreescolar ? 'Jardín / Transición' : 'Primaria 1° a 5°') }}:
+              {{ horaEntradaSalonActivo }} a {{ horaSalidaSalonActivo }}
+            </strong>
+            <span>
+              Descanso parametrizado del salón:
+              <strong>{{ horaInicioDescansoSalonActivo }} a {{ horaFinDescansoSalonActivo }}</strong>.
+            </span>
           </div>
         </div>
 
@@ -213,14 +215,33 @@
 
     <!-- Columna Derecha: Calendario Semanal Visual (Lunes a Viernes) -->
     <section class="card-box schedule-board">
-      <div class="card-head">
-        <span class="material-icons head-icon sky">view_week</span>
-        <div>
-          <h2>Mi Horario de Clases de la Semana (Lunes a Viernes)</h2>
-          <p>
-            Transición/Preescolar: <strong>7:30 AM - 12:00 PM</strong> (Descanso 9:30 - 10:00 AM) ·
-            Salones Superiores (1° a 5°): <strong>7:00 AM - 1:00 PM</strong> (Descanso 10:00 - 10:30 AM)
-          </p>
+      <div class="card-head" style="justify-content: space-between; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="material-icons head-icon sky">view_week</span>
+          <div>
+            <h2>
+              {{ salonHorarioFiltroId ? ('Horario Único del Salón — ' + (cursoSeleccionadoHorario?.nombre || '')) : 'Mi Horario de Clases de la Semana (Lunes a Viernes)' }}
+            </h2>
+            <p>
+              Jardín y Transición: <strong>7:30 AM - 12:00 PM</strong> ·
+              Grados 1° a 5°: <strong>7:00 AM - 1:00 PM</strong> ·
+              Descanso activo: <strong>{{ horaInicioDescansoSalonActivo }} - {{ horaFinDescansoSalonActivo }}</strong>
+            </p>
+          </div>
+        </div>
+
+        <div class="field" style="min-width: 240px;">
+          <label style="font-size: 11px;">Ver Horario Único por Salón:</label>
+          <div class="input-box">
+            <select
+              [ngModel]="salonHorarioFiltroId"
+              (ngModelChange)="cambiarFiltroSalonHorario($event)">
+              <option value="">Mis Clases en Todos los Salones</option>
+              <option *ngFor="let c of cursos" [value]="c.id">
+                Horario Único: {{ c.nombre }} ({{ c.horaEntrada || (c.nivel === 'PREESCOLAR' ? '07:30' : '07:00') }} - {{ c.horaSalida || (c.nivel === 'PREESCOLAR' ? '12:00' : '13:00') }})
+              </option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -244,16 +265,16 @@
               <div class="slot-subject">{{ h.materia?.nombre }}</div>
               <div class="slot-course">
                 <span class="material-icons">meeting_room</span>
-                <span>{{ h.curso?.nombre }} · {{ h.aula }}</span>
+                <span>{{ h.curso?.nombre }} · Prof. {{ h.docente?.nombres }} {{ h.docente?.apellidos }}</span>
               </div>
             </div>
 
-            <!-- Franja fija de Descanso (30 minutos) -->
+            <!-- Franja de Descanso Parametrizable del Salón -->
             <div class="recess-slot">
               <span class="material-icons">free_breakfast</span>
               <div>
-                <strong>Descanso (30 min)</strong>
-                <small>{{ esAsignacionPreescolar ? '09:30 - 10:00 AM (Transición)' : '10:00 - 10:30 AM (Primaria)' }}</small>
+                <strong>Descanso Escolar</strong>
+                <small>{{ horaInicioDescansoSalonActivo }} - {{ horaFinDescansoSalonActivo }}</small>
               </div>
             </div>
 
@@ -272,7 +293,7 @@
               <div class="slot-subject">{{ h.materia?.nombre }}</div>
               <div class="slot-course">
                 <span class="material-icons">meeting_room</span>
-                <span>{{ h.curso?.nombre }} · {{ h.aula }}</span>
+                <span>{{ h.curso?.nombre }} · Prof. {{ h.docente?.nombres }} {{ h.docente?.apellidos }}</span>
               </div>
             </div>
 

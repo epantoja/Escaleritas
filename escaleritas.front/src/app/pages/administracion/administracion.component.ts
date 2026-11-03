@@ -5,12 +5,20 @@ import { AcademicoService } from '../services/academico.service';
 import { LoginService } from '../services/login.service';
 import {
   CursoModel,
+  DiaSemanaTipo,
   DocenteModel,
   EstudianteModel,
+  HorarioClaseModel,
   MateriaModel,
 } from '../models/academico.model';
 import { InfoUsuarioModel } from '../../components/models/infoUsuario.model';
 import { SnackBarAnnotatedComponent } from '../../components/snack-bar-annotated/snack-bar-annotated.component';
+
+export interface FranjaSalonSugerida {
+  etiqueta: string;
+  horaInicio: string;
+  horaFin: string;
+}
 
 @Component({
   selector: 'app-administracion',
@@ -20,14 +28,28 @@ import { SnackBarAnnotatedComponent } from '../../components/snack-bar-annotated
 export class AdministracionComponent implements OnInit {
   usuario: InfoUsuarioModel | null = null;
 
-  // Pestaña activa: 'ESTUDIANTES' | 'DOCENTES' | 'CURSOS'
-  tabActiva: 'ESTUDIANTES' | 'DOCENTES' | 'CURSOS' = 'ESTUDIANTES';
+  // Pestaña activa: 'ESTUDIANTES' | 'DOCENTES' | 'CURSOS' | 'HORARIO_SALON'
+  tabActiva: 'ESTUDIANTES' | 'DOCENTES' | 'CURSOS' | 'HORARIO_SALON' = 'ESTUDIANTES';
 
   // Catálogos y listados
   cursos: CursoModel[] = [];
   materias: MateriaModel[] = [];
   estudiantes: EstudianteModel[] = [];
   docentes: DocenteModel[] = [];
+
+  // Estado para el Horario Único por Salón
+  salonHorarioSeleccionadoId = '';
+  horariosSalonActual: HorarioClaseModel[] = [];
+  configSalonForm!: FormGroup;
+  horarioSalonForm!: FormGroup;
+
+  readonly diasSemana: { codigo: DiaSemanaTipo; etiqueta: string }[] = [
+    { codigo: 'LUNES', etiqueta: 'Lunes' },
+    { codigo: 'MARTES', etiqueta: 'Martes' },
+    { codigo: 'MIERCOLES', etiqueta: 'Miércoles' },
+    { codigo: 'JUEVES', etiqueta: 'Jueves' },
+    { codigo: 'VIERNES', etiqueta: 'Viernes' },
+  ];
 
   cargandoDatos = false;
   guardando = false;
@@ -121,6 +143,25 @@ export class AdministracionComponent implements OnInit {
       aula: ['', [Validators.required]],
       cupoMaximo: [25, [Validators.required, Validators.min(1), Validators.max(50)]],
       tipoCalificacion: ['NUMERICA', [Validators.required]],
+      horaInicioDescanso: ['10:00', [Validators.required]],
+      horaFinDescanso: ['10:30', [Validators.required]],
+    });
+
+    this.configSalonForm = this.fb.group({
+      directorDocenteId: [''],
+      horaInicioDescanso: ['10:00', [Validators.required]],
+      horaFinDescanso: ['10:30', [Validators.required]],
+      tipoCalificacion: ['NUMERICA', [Validators.required]],
+      aula: [''],
+    });
+
+    this.horarioSalonForm = this.fb.group({
+      diaSemana: ['LUNES', [Validators.required]],
+      franjaIndex: [0, [Validators.required]],
+      horaInicio: ['07:00', [Validators.required]],
+      horaFin: ['08:00', [Validators.required]],
+      materiaId: ['', [Validators.required]],
+      docenteId: ['', [Validators.required]],
     });
   }
 
@@ -133,14 +174,25 @@ export class AdministracionComponent implements OnInit {
           this.estudianteForm.patchValue({ cursoId: this.cursos[0].id });
           this.asignacionForm.patchValue({ cursoId: this.cursos[0].id });
         }
+        if (this.cursos.length > 0 && !this.salonHorarioSeleccionadoId) {
+          this.seleccionarSalonHorario(this.cursos[0].id);
+        } else if (this.salonHorarioSeleccionadoId) {
+          this.sincronizarFormularioSalonHorario();
+          this.cargarHorariosDelSalon(this.salonHorarioSeleccionadoId);
+        }
       },
     });
 
     this.academicoService.obtenerMaterias().subscribe({
       next: (res) => {
         this.materias = res.materias || [];
-        if (this.materias.length > 0 && !this.asignacionForm.get('materiaId')?.value) {
-          this.asignacionForm.patchValue({ materiaId: this.materias[0].id });
+        if (this.materias.length > 0) {
+          if (!this.asignacionForm.get('materiaId')?.value) {
+            this.asignacionForm.patchValue({ materiaId: this.materias[0].id });
+          }
+          if (!this.horarioSalonForm.get('materiaId')?.value) {
+            this.horarioSalonForm.patchValue({ materiaId: this.materias[0].id });
+          }
         }
       },
     });
@@ -149,8 +201,11 @@ export class AdministracionComponent implements OnInit {
     this.filtrarDocentes();
   }
 
-  cambiarTab(tab: 'ESTUDIANTES' | 'DOCENTES' | 'CURSOS'): void {
+  cambiarTab(tab: 'ESTUDIANTES' | 'DOCENTES' | 'CURSOS' | 'HORARIO_SALON'): void {
     this.tabActiva = tab;
+    if (tab === 'HORARIO_SALON' && !this.salonHorarioSeleccionadoId && this.cursos.length > 0) {
+      this.seleccionarSalonHorario(this.cursos[0].id);
+    }
   }
 
   // ==========================================================================
@@ -269,6 +324,9 @@ export class AdministracionComponent implements OnInit {
       .subscribe({
         next: (res) => {
           this.docentes = res.docentes || [];
+          if (this.docentes.length > 0 && !this.horarioSalonForm.get('docenteId')?.value) {
+            this.horarioSalonForm.patchValue({ docenteId: this.docentes[0].id });
+          }
         },
       });
   }
@@ -423,14 +481,11 @@ export class AdministracionComponent implements OnInit {
   }
 
   // ==========================================================================
-  // ASIGNAR DIRECTORA DE GRUPO A UN SALÓN DE CLASE
+  // ASIGNAR DIRECTORA DE GRUPO Y PARAMETRIZAR HORARIO ÚNICO POR SALÓN
   // ==========================================================================
 
-  esSalonCaritas(curso: CursoModel): boolean {
-    if (curso.tipoCalificacion === 'CARITAS') {
-      return true;
-    }
-    if (curso.tipoCalificacion === 'NUMERICA') {
+  esSalonPreescolar(curso?: CursoModel | null): boolean {
+    if (!curso) {
       return false;
     }
     return (
@@ -440,6 +495,304 @@ export class AdministracionComponent implements OnInit {
     );
   }
 
+  esSalonCaritas(curso: CursoModel): boolean {
+    if (curso.tipoCalificacion === 'CARITAS') {
+      return true;
+    }
+    if (curso.tipoCalificacion === 'NUMERICA') {
+      return false;
+    }
+    return this.esSalonPreescolar(curso);
+  }
+
+  horaEntradaSalon(curso?: CursoModel | null): string {
+    if (!curso) {
+      return '07:00';
+    }
+    return curso.horaEntrada || (this.esSalonPreescolar(curso) ? '07:30' : '07:00');
+  }
+
+  horaSalidaSalon(curso?: CursoModel | null): string {
+    if (!curso) {
+      return '13:00';
+    }
+    return curso.horaSalida || (this.esSalonPreescolar(curso) ? '12:00' : '13:00');
+  }
+
+  horaInicioDescansoSalon(curso?: CursoModel | null): string {
+    if (!curso) {
+      return '10:00';
+    }
+    return (
+      curso.horaInicioDescanso ||
+      (this.esSalonPreescolar(curso) ? '09:30' : '10:00')
+    );
+  }
+
+  horaFinDescansoSalon(curso?: CursoModel | null): string {
+    if (!curso) {
+      return '10:30';
+    }
+    return (
+      curso.horaFinDescanso ||
+      (this.esSalonPreescolar(curso) ? '10:00' : '10:30')
+    );
+  }
+
+  get salonHorarioActual(): CursoModel | null {
+    return (
+      this.cursos.find((c) => c.id === this.salonHorarioSeleccionadoId) || null
+    );
+  }
+
+  irAHorarioSalon(curso: CursoModel): void {
+    this.tabActiva = 'HORARIO_SALON';
+    this.seleccionarSalonHorario(curso.id);
+  }
+
+  seleccionarSalonHorario(cursoId: string): void {
+    this.salonHorarioSeleccionadoId = cursoId;
+    this.sincronizarFormularioSalonHorario();
+    this.cargarHorariosDelSalon(cursoId);
+  }
+
+  private sincronizarFormularioSalonHorario(): void {
+    const salon = this.salonHorarioActual;
+    if (!salon) {
+      return;
+    }
+    this.configSalonForm.patchValue({
+      directorDocenteId: salon.directorDocenteId || '',
+      horaInicioDescanso: this.horaInicioDescansoSalon(salon),
+      horaFinDescanso: this.horaFinDescansoSalon(salon),
+      tipoCalificacion: this.esSalonCaritas(salon) ? 'CARITAS' : 'NUMERICA',
+      aula: salon.aula || 'Salón Principal',
+    });
+
+    const franjas = this.franjasSugeridasSalonActual;
+    if (franjas.length > 0) {
+      this.horarioSalonForm.patchValue({
+        franjaIndex: 0,
+        horaInicio: franjas[0].horaInicio,
+        horaFin: franjas[0].horaFin,
+      });
+    }
+  }
+
+  cargarHorariosDelSalon(cursoId: string): void {
+    if (!cursoId) {
+      this.horariosSalonActual = [];
+      return;
+    }
+    this.academicoService.obtenerHorarios({ cursoId }).subscribe({
+      next: (res) => {
+        this.horariosSalonActual = res.horarios || [];
+      },
+    });
+  }
+
+  private aMinutos(hhmm: string): number {
+    const [h, m] = (hhmm || '00:00').split(':').map((v) => Number(v) || 0);
+    return h * 60 + m;
+  }
+
+  private aHHMM(totalMin: number): string {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  private generarBloquesEnTramo(inicioHHMM: string, finHHMM: string): FranjaSalonSugerida[] {
+    const resultado: FranjaSalonSugerida[] = [];
+    let cursor = this.aMinutos(inicioHHMM);
+    const limite = this.aMinutos(finHHMM);
+    if (cursor >= limite) {
+      return resultado;
+    }
+
+    while (cursor < limite) {
+      const restante = limite - cursor;
+      const duracion = restante >= 60 ? 60 : restante;
+      const sig = cursor + duracion;
+      const hIni = this.aHHMM(cursor);
+      const hFin = this.aHHMM(sig);
+      resultado.push({
+        etiqueta: `${hIni} - ${hFin} (${duracion} min)`,
+        horaInicio: hIni,
+        horaFin: hFin,
+      });
+      cursor = sig;
+    }
+
+    return resultado;
+  }
+
+  /**
+   * Genera dinámicamente las franjas horarias del salón respetando su hora de entrada/salida
+   * (Jardín/Transición: 07:30-12:00 | 1° a 5°: 07:00-13:00) y el descanso parametrizado del salón.
+   */
+  get franjasSugeridasSalonActual(): FranjaSalonSugerida[] {
+    const salon = this.salonHorarioActual;
+    const entrada = this.horaEntradaSalon(salon);
+    const salida = this.horaSalidaSalon(salon);
+    const descIni =
+      this.configSalonForm?.get('horaInicioDescanso')?.value ||
+      this.horaInicioDescansoSalon(salon);
+    const descFin =
+      this.configSalonForm?.get('horaFinDescanso')?.value ||
+      this.horaFinDescansoSalon(salon);
+
+    const antes = this.generarBloquesEnTramo(entrada, descIni).map((b, idx) => ({
+      ...b,
+      etiqueta: `${idx + 1}° Bloque (Antes del descanso): ${b.horaInicio} - ${b.horaFin}`,
+    }));
+    const despues = this.generarBloquesEnTramo(descFin, salida).map((b, idx) => ({
+      ...b,
+      etiqueta: `${antes.length + idx + 1}° Bloque (Después del descanso): ${b.horaInicio} - ${b.horaFin}`,
+    }));
+
+    return [...antes, ...despues];
+  }
+
+  alCambiarFranjaSalon(indiceValor: any): void {
+    const idx = Number(indiceValor);
+    const franjas = this.franjasSugeridasSalonActual;
+    if (!isNaN(idx) && franjas[idx]) {
+      this.horarioSalonForm.patchValue({
+        horaInicio: franjas[idx].horaInicio,
+        horaFin: franjas[idx].horaFin,
+      });
+    }
+  }
+
+  guardarParametrosSalonHorario(): void {
+    const salon = this.salonHorarioActual;
+    if (!salon || this.configSalonForm.invalid) {
+      this.configSalonForm.markAllAsTouched();
+      return;
+    }
+
+    this.guardando = true;
+    const {
+      directorDocenteId,
+      horaInicioDescanso,
+      horaFinDescanso,
+      tipoCalificacion,
+      aula,
+    } = this.configSalonForm.value;
+
+    this.academicoService
+      .actualizarCurso(salon.id, {
+        directorDocenteId: directorDocenteId || null,
+        horaInicioDescanso,
+        horaFinDescanso,
+        tipoCalificacion,
+        aula: aula || salon.aula || 'Salón Principal',
+      })
+      .subscribe({
+        next: (res) => {
+          this.guardando = false;
+          this.notificar(
+            'Parámetros de descanso, calificación y directora de grupo del salón guardados'
+          );
+          this.academicoService.obtenerCursos().subscribe({
+            next: (cursosRes) => {
+              this.cursos = cursosRes.cursos || [];
+              this.sincronizarFormularioSalonHorario();
+            },
+          });
+          this.filtrarDocentes();
+        },
+        error: () => {
+          this.guardando = false;
+        },
+      });
+  }
+
+  agregarBloqueHorarioSalon(): void {
+    const salon = this.salonHorarioActual;
+    if (!salon || this.horarioSalonForm.invalid) {
+      this.horarioSalonForm.markAllAsTouched();
+      return;
+    }
+
+    this.guardando = true;
+    const { diaSemana, horaInicio, horaFin, materiaId, docenteId } =
+      this.horarioSalonForm.value;
+
+    this.academicoService
+      .crearHorario({
+        cursoId: salon.id,
+        materiaId,
+        docenteId,
+        diaSemana,
+        horaInicio,
+        horaFin,
+        aula: salon.aula || 'Salón Principal',
+      })
+      .subscribe({
+        next: (res) => {
+          this.guardando = false;
+          this.notificar(res.mensaje);
+          this.cargarHorariosDelSalon(salon.id);
+          this.recargarCursos();
+          this.filtrarDocentes();
+        },
+        error: () => {
+          this.guardando = false;
+        },
+      });
+  }
+
+  cambiarProfesoraDeBloqueHorario(
+    bloque: HorarioClaseModel,
+    nuevoDocenteId: string
+  ): void {
+    if (!nuevoDocenteId || nuevoDocenteId === bloque.docenteId) {
+      return;
+    }
+    this.academicoService
+      .actualizarHorario(bloque.id, { docenteId: nuevoDocenteId })
+      .subscribe({
+        next: (res) => {
+          this.notificar('Profesora asignada a la materia actualizada en el horario del salón');
+          if (this.salonHorarioActual) {
+            this.cargarHorariosDelSalon(this.salonHorarioActual.id);
+          }
+          this.recargarCursos();
+          this.filtrarDocentes();
+        },
+      });
+  }
+
+  eliminarBloqueHorarioSalon(horarioId: string): void {
+    this.academicoService.eliminarHorario(horarioId).subscribe({
+      next: (res) => {
+        this.notificar(res.mensaje);
+        if (this.salonHorarioActual) {
+          this.cargarHorariosDelSalon(this.salonHorarioActual.id);
+        }
+        this.recargarCursos();
+      },
+    });
+  }
+
+  horariosSalonPorDia(dia: DiaSemanaTipo): HorarioClaseModel[] {
+    return this.horariosSalonActual
+      .filter((h) => h.diaSemana === dia)
+      .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+  }
+
+  horariosSalonAntesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
+    const descIni = this.horaInicioDescansoSalon(this.salonHorarioActual);
+    return this.horariosSalonPorDia(dia).filter((h) => h.horaInicio < descIni);
+  }
+
+  horariosSalonDespuesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
+    const descIni = this.horaInicioDescansoSalon(this.salonHorarioActual);
+    return this.horariosSalonPorDia(dia).filter((h) => h.horaInicio >= descIni);
+  }
+
   abrirModalDirectoraGrupo(curso: CursoModel): void {
     this.cursoSeleccionadoDirectora = curso;
     this.directoraSalonForm.reset({
@@ -447,6 +800,8 @@ export class AdministracionComponent implements OnInit {
       aula: curso.aula || 'Salón Principal',
       cupoMaximo: curso.cupoMaximo || 25,
       tipoCalificacion: this.esSalonCaritas(curso) ? 'CARITAS' : 'NUMERICA',
+      horaInicioDescanso: this.horaInicioDescansoSalon(curso),
+      horaFinDescanso: this.horaFinDescansoSalon(curso),
     });
     this.mostrarModalDirectora = true;
   }
@@ -458,8 +813,14 @@ export class AdministracionComponent implements OnInit {
     }
 
     this.guardando = true;
-    const { directorDocenteId, aula, cupoMaximo, tipoCalificacion } =
-      this.directoraSalonForm.value;
+    const {
+      directorDocenteId,
+      aula,
+      cupoMaximo,
+      tipoCalificacion,
+      horaInicioDescanso,
+      horaFinDescanso,
+    } = this.directoraSalonForm.value;
 
     this.academicoService
       .actualizarCurso(this.cursoSeleccionadoDirectora.id, {
@@ -467,6 +828,8 @@ export class AdministracionComponent implements OnInit {
         aula,
         cupoMaximo: Number(cupoMaximo),
         tipoCalificacion,
+        horaInicioDescanso,
+        horaFinDescanso,
       })
       .subscribe({
         next: (res) => {
@@ -486,6 +849,9 @@ export class AdministracionComponent implements OnInit {
     this.academicoService.obtenerCursos().subscribe({
       next: (res) => {
         this.cursos = res.cursos || [];
+        if (this.salonHorarioSeleccionadoId) {
+          this.sincronizarFormularioSalonHorario();
+        }
       },
     });
   }

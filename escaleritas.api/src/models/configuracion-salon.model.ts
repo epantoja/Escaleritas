@@ -95,3 +95,4 @@ ConfiguracionSalon.init(
 );
 
 export default ConfiguracionSalon;
+

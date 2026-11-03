@@ -116,14 +116,36 @@ export class PortalEstudianteComponent implements OnInit {
     return { simbolo: '😐 :|', texto: 'Normal', clase: 'carita-pill-normal' };
   }
 
+  get horaEntradaCurso(): string {
+    return this.curso?.horaEntrada || (this.esCursoPreescolar ? '07:30' : '07:00');
+  }
+
+  get horaSalidaCurso(): string {
+    return this.curso?.horaSalida || (this.esCursoPreescolar ? '12:00' : '13:00');
+  }
+
+  get horaInicioDescansoCurso(): string {
+    return (
+      this.curso?.horaInicioDescanso ||
+      (this.esCursoPreescolar ? '09:30' : '10:00')
+    );
+  }
+
+  get horaFinDescansoCurso(): string {
+    return (
+      this.curso?.horaFinDescanso ||
+      (this.esCursoPreescolar ? '10:00' : '10:30')
+    );
+  }
+
   horariosAntesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
-    const horaCorte = this.esCursoPreescolar ? '09:30' : '10:00';
-    return this.horariosPorDia(dia).filter((h) => h.horaFin <= horaCorte);
+    const horaCorte = this.horaInicioDescansoCurso;
+    return this.horariosPorDia(dia).filter((h) => h.horaInicio < horaCorte);
   }
 
   horariosDespuesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
-    const horaCorte = this.esCursoPreescolar ? '09:30' : '10:00';
-    return this.horariosPorDia(dia).filter((h) => h.horaFin > horaCorte);
+    const horaCorte = this.horaInicioDescansoCurso;
+    return this.horariosPorDia(dia).filter((h) => h.horaInicio >= horaCorte);
   }
 
   nivelDesempeno(nota: number | null): { etiqueta: string; clase: string } {
