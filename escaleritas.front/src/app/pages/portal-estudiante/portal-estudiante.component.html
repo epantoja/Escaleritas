@@ -68,12 +68,14 @@
 
       <div class="summary-card">
         <div class="sum-icon sky">
-          <span class="material-icons">military_tech</span>
+          <span class="material-icons">{{ esCalificacionCaritas ? 'sentiment_satisfied_alt' : 'military_tech' }}</span>
         </div>
         <div>
-          <span class="sum-label">Promedio Acumulado</span>
+          <span class="sum-label">{{ esCalificacionCaritas ? 'Valoración General' : 'Promedio Acumulado' }}</span>
           <strong class="sum-val">{{ promedioGeneral }}</strong>
-          <small class="sum-sub">Escala Institucional 1.0 a 5.0</small>
+          <small class="sum-sub">
+            {{ esCalificacionCaritas ? 'Caritas Preescolar: :) Bien / :| Normal' : 'Escala Numérica 1.0 a 5.0' }}
+          </small>
         </div>
       </div>
     </div>
@@ -106,7 +108,12 @@
       <div class="card-title-row">
         <div>
           <h2>Materias Cursadas y Reporte de Calificaciones</h2>
-          <p>Detalle de las asignaturas del salón {{ curso.nombre }}, docente titular y notas por periodo académico.</p>
+          <p *ngIf="esCalificacionCaritas">
+            Grado {{ curso.nombre }}: Las calificaciones se expresan con caritas (<strong>😊 :) Bien</strong> y <strong>😐 :| Normal</strong>) por periodo académico.
+          </p>
+          <p *ngIf="!esCalificacionCaritas">
+            Grado {{ curso.nombre }}: Calificaciones numéricas en la escala de <strong>1.0 a 5.0</strong> por periodo académico.
+          </p>
         </div>
       </div>
 
@@ -143,18 +150,47 @@
               <td>
                 <span class="hours-pill">{{ item.intensidadHoraria }}h / sem</span>
               </td>
-              <td class="grade-cell">{{ item.notaP1 ?? '—' }}</td>
-              <td class="grade-cell">{{ item.notaP2 ?? '—' }}</td>
-              <td class="grade-cell">{{ item.notaP3 ?? '—' }}</td>
-              <td class="grade-cell">{{ item.notaP4 ?? '—' }}</td>
-              <td>
-                <span
-                  class="def-badge"
-                  [class.pass]="(item.notaDefinitiva || 0) >= 3.0"
-                  [class.fail]="item.notaDefinitiva && item.notaDefinitiva < 3.0">
-                  {{ item.notaDefinitiva ?? '—' }}
-                </span>
-              </td>
+
+              <!-- MODO CARITAS (JARDÍN Y TRANSICIÓN): :) Bien vs :| Normal -->
+              <ng-container *ngIf="esCalificacionCaritas; else notasNumericasPortal">
+                <td *ngFor="let notaPer of [item.notaP1, item.notaP2, item.notaP3, item.notaP4]" class="grade-cell">
+                  <span
+                    *ngIf="formatearCarita(notaPer) as carita; else sinCarita"
+                    class="carita-pill"
+                    [ngClass]="carita.clase">
+                    {{ carita.simbolo }} {{ carita.texto }}
+                  </span>
+                  <ng-template #sinCarita>—</ng-template>
+                </td>
+                <td>
+                  <span
+                    *ngIf="formatearCarita(item.notaDefinitiva) as caritaDef; else sinCaritaDef"
+                    class="carita-pill"
+                    [ngClass]="caritaDef.clase">
+                    {{ caritaDef.simbolo }} {{ caritaDef.texto }}
+                  </span>
+                  <ng-template #sinCaritaDef>
+                    <span class="def-badge">—</span>
+                  </ng-template>
+                </td>
+              </ng-container>
+
+              <!-- MODO NUMÉRICO (1° A 5° DE PRIMARIA): 1.0 a 5.0 -->
+              <ng-template #notasNumericasPortal>
+                <td class="grade-cell">{{ item.notaP1 ?? '—' }}</td>
+                <td class="grade-cell">{{ item.notaP2 ?? '—' }}</td>
+                <td class="grade-cell">{{ item.notaP3 ?? '—' }}</td>
+                <td class="grade-cell">{{ item.notaP4 ?? '—' }}</td>
+                <td>
+                  <span
+                    class="def-badge"
+                    [class.pass]="(item.notaDefinitiva || 0) >= 3.0"
+                    [class.fail]="item.notaDefinitiva && item.notaDefinitiva < 3.0">
+                    {{ item.notaDefinitiva ?? '—' }}
+                  </span>
+                </td>
+              </ng-template>
+
               <td>
                 <span class="perf-badge" [ngClass]="nivelDesempeno(item.notaDefinitiva).clase">
                   {{ nivelDesempeno(item.notaDefinitiva).etiqueta }}

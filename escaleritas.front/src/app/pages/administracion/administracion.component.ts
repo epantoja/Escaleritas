@@ -120,6 +120,7 @@ export class AdministracionComponent implements OnInit {
       directorDocenteId: [''],
       aula: ['', [Validators.required]],
       cupoMaximo: [25, [Validators.required, Validators.min(1), Validators.max(50)]],
+      tipoCalificacion: ['NUMERICA', [Validators.required]],
     });
   }
 
@@ -425,12 +426,27 @@ export class AdministracionComponent implements OnInit {
   // ASIGNAR DIRECTORA DE GRUPO A UN SALÓN DE CLASE
   // ==========================================================================
 
+  esSalonCaritas(curso: CursoModel): boolean {
+    if (curso.tipoCalificacion === 'CARITAS') {
+      return true;
+    }
+    if (curso.tipoCalificacion === 'NUMERICA') {
+      return false;
+    }
+    return (
+      curso.nivel === 'PREESCOLAR' ||
+      curso.grado === 'JARDIN' ||
+      curso.grado === 'TRANSICION'
+    );
+  }
+
   abrirModalDirectoraGrupo(curso: CursoModel): void {
     this.cursoSeleccionadoDirectora = curso;
     this.directoraSalonForm.reset({
       directorDocenteId: curso.directorDocenteId || '',
       aula: curso.aula || 'Salón Principal',
       cupoMaximo: curso.cupoMaximo || 25,
+      tipoCalificacion: this.esSalonCaritas(curso) ? 'CARITAS' : 'NUMERICA',
     });
     this.mostrarModalDirectora = true;
   }
@@ -442,7 +458,7 @@ export class AdministracionComponent implements OnInit {
     }
 
     this.guardando = true;
-    const { directorDocenteId, aula, cupoMaximo } =
+    const { directorDocenteId, aula, cupoMaximo, tipoCalificacion } =
       this.directoraSalonForm.value;
 
     this.academicoService
@@ -450,6 +466,7 @@ export class AdministracionComponent implements OnInit {
         directorDocenteId: directorDocenteId || null,
         aula,
         cupoMaximo: Number(cupoMaximo),
+        tipoCalificacion,
       })
       .subscribe({
         next: (res) => {

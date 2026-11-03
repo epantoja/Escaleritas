@@ -3,7 +3,13 @@ import { Rol, RolCodigo } from './rol.model';
 import { Permiso } from './permiso.model';
 import { RolPermiso } from './rol-permiso.model';
 import { Usuario } from './usuario.model';
-import { Curso, GradoEscolar } from './curso.model';
+import {
+  Curso,
+  GradoEscolar,
+  cacheConfiguracionSalon,
+  obtenerConfigDefaultsCurso,
+} from './curso.model';
+import { ConfiguracionSalon } from './configuracion-salon.model';
 import { Materia } from './materia.model';
 import { Docente } from './docente.model';
 import { DocenteCursoMateria } from './docente-curso-materia.model';
@@ -57,6 +63,19 @@ Curso.hasMany(Estudiante, {
 });
 
 Estudiante.belongsTo(Curso, {
+  targetKey: 'id',
+  foreignKey: 'cursoId',
+  as: 'curso',
+});
+
+// Un Curso tiene una Configuración de Horario y Descanso Único (1:1)
+Curso.hasOne(ConfiguracionSalon, {
+  sourceKey: 'id',
+  foreignKey: 'cursoId',
+  as: 'configuracionHorario',
+  onDelete: 'CASCADE',
+});
+ConfiguracionSalon.belongsTo(Curso, {
   targetKey: 'id',
   foreignKey: 'cursoId',
   as: 'curso',
@@ -269,6 +288,7 @@ Calificacion.belongsTo(Docente, {
 export const seedSeguridadBase = async (): Promise<void> => {
   try {
     await Curso.sync();
+    await ConfiguracionSalon.sync();
     await Materia.sync();
     await Docente.sync();
     await DocenteCursoMateria.sync();
@@ -442,13 +462,62 @@ export const seedSeguridadBase = async (): Promise<void> => {
     ];
 
     for (const c of cursosIniciales) {
-      await Curso.findOrCreate({
+      const defaultsConfig = obtenerConfigDefaultsCurso(c.nivel, c.grado);
+      const [cursoRow] = await Curso.findOrCreate({
         where: { codigo: c.codigo },
         defaults: {
           ...c,
+          tipoCalificacion: defaultsConfig.tipoCalificacion,
           anioLectivo: anioActual,
           estado: 1,
         },
+      });
+      const [configRow] = await ConfiguracionSalon.findOrCreate({
+        where: { cursoId: cursoRow.id },
+        defaults: {
+          cursoId: cursoRow.id,
+          horaEntrada: defaultsConfig.horaEntrada,
+          horaSalida: defaultsConfig.horaSalida,
+          horaInicioDescanso: defaultsConfig.horaInicioDescanso,
+          horaFinDescanso: defaultsConfig.horaFinDescanso,
+          tipoCalificacion: defaultsConfig.tipoCalificacion,
+        },
+      });
+      cacheConfiguracionSalon.set(cursoRow.id, {
+        horaEntrada: configRow.horaEntrada,
+        horaSalida: configRow.horaSalida,
+        horaInicioDescanso: configRow.horaInicioDescanso,
+        horaFinDescanso: configRow.horaFinDescanso,
+        tipoCalificacion:
+          configRow.tipoCalificacion === 'CARITAS' ? 'CARITAS' : 'NUMERICA',
+      });
+    }
+
+    // Poblar cache con cualquier otro salón existente en la base de datos
+    const todosCursos = await Curso.findAll();
+    for (const cursoRow of todosCursos) {
+      const defaultsConfig = obtenerConfigDefaultsCurso(
+        cursoRow.nivel,
+        cursoRow.grado
+      );
+      const [configRow] = await ConfiguracionSalon.findOrCreate({
+        where: { cursoId: cursoRow.id },
+        defaults: {
+          cursoId: cursoRow.id,
+          horaEntrada: defaultsConfig.horaEntrada,
+          horaSalida: defaultsConfig.horaSalida,
+          horaInicioDescanso: defaultsConfig.horaInicioDescanso,
+          horaFinDescanso: defaultsConfig.horaFinDescanso,
+          tipoCalificacion: defaultsConfig.tipoCalificacion,
+        },
+      });
+      cacheConfiguracionSalon.set(cursoRow.id, {
+        horaEntrada: configRow.horaEntrada,
+        horaSalida: configRow.horaSalida,
+        horaInicioDescanso: configRow.horaInicioDescanso,
+        horaFinDescanso: configRow.horaFinDescanso,
+        tipoCalificacion:
+          configRow.tipoCalificacion === 'CARITAS' ? 'CARITAS' : 'NUMERICA',
       });
     }
 
@@ -540,6 +609,7 @@ export {
   Usuario,
   Curso,
   GradoEscolar,
+  ConfiguracionSalon,
   Materia,
   Docente,
   DocenteCursoMateria,

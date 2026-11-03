@@ -38,6 +38,7 @@ export class DocentesPanelComponent implements OnInit {
   materias: MateriaModel[] = [];
   horariosDocente: HorarioClaseModel[] = [];
 
+  salonCalificandoId = '';
   asignacionCalificando: AsignacionDocenteModel | null = null;
   planillaNotas: CalificacionPlanillaItemModel[] = [];
 
@@ -233,9 +234,20 @@ export class DocentesPanelComponent implements OnInit {
         bloqueIndice: 0,
         aula: asignaciones[0].curso?.aula || '',
       });
-      if (!this.asignacionCalificando) {
-        this.seleccionarAsignacionParaCalificar(asignaciones[0]);
+      const salonExiste = asignaciones.some(
+        (a) => a.cursoId === this.salonCalificandoId
+      );
+      if (!this.salonCalificandoId || !salonExiste) {
+        this.salonCalificandoId = asignaciones[0].cursoId;
       }
+      const primeraDelSalon =
+        asignaciones.find((a) => a.cursoId === this.salonCalificandoId) ||
+        asignaciones[0];
+      this.seleccionarAsignacionParaCalificar(primeraDelSalon);
+    } else {
+      this.salonCalificandoId = '';
+      this.asignacionCalificando = null;
+      this.planillaNotas = [];
     }
   }
 
@@ -361,8 +373,120 @@ export class DocentesPanelComponent implements OnInit {
   }
 
   // ==========================================================================
-  // 3. CALIFICACIONES / NOTAS POR MATERIA
+  // 3. CALIFICACIONES / NOTAS POR SALÓN Y MATERIA (CARITAS vs 1.0-5.0)
   // ==========================================================================
+
+  /**
+   * Lista única de Salones / Cursos donde la docente tiene materias asignadas
+   */
+  get salonesAsignadosDocente(): NonNullable<AsignacionDocenteModel['curso']>[] {
+    const mapa = new Map<string, NonNullable<AsignacionDocenteModel['curso']>>();
+    for (const asig of this.docenteActivo?.asignaciones || []) {
+      if (asig.curso && !mapa.has(asig.curso.id)) {
+        mapa.set(asig.curso.id, asig.curso);
+      }
+    }
+    return Array.from(mapa.values());
+  }
+
+  /**
+   * Materias que la docente enseña dentro del Salón actualmente seleccionado
+   */
+  get asignacionesDelSalonCalificando(): AsignacionDocenteModel[] {
+    if (!this.salonCalificandoId) {
+      return this.docenteActivo?.asignaciones || [];
+    }
+    return (this.docenteActivo?.asignaciones || []).filter(
+      (a) => a.cursoId === this.salonCalificandoId
+    );
+  }
+
+  esSalonCaritas(curso?: AsignacionDocenteModel['curso'] | null): boolean {
+    if (!curso) {
+      return false;
+    }
+    if (curso.tipoCalificacion === 'CARITAS') {
+      return true;
+    }
+    if (curso.tipoCalificacion === 'NUMERICA') {
+      return false;
+    }
+    return (
+      curso.nivel === 'PREESCOLAR' ||
+      curso.grado === 'JARDIN' ||
+      curso.grado === 'TRANSICION'
+    );
+  }
+
+  get esCalificacionCaritas(): boolean {
+    return this.esSalonCaritas(this.asignacionCalificando?.curso);
+  }
+
+  onCambioSalonCalificar(cursoId: string): void {
+    this.salonCalificandoId = cursoId;
+    const materiasSalon = this.asignacionesDelSalonCalificando;
+    if (materiasSalon.length > 0) {
+      this.seleccionarAsignacionParaCalificar(materiasSalon[0]);
+    } else {
+      this.asignacionCalificando = null;
+      this.planillaNotas = [];
+    }
+  }
+
+  onCambioAsignacionCalificarId(asignacionId: string): void {
+    const encontrada = (this.docenteActivo?.asignaciones || []).find(
+      (a) => a.id === asignacionId
+    );
+    if (encontrada) {
+      this.salonCalificandoId = encontrada.cursoId;
+      this.seleccionarAsignacionParaCalificar(encontrada);
+    }
+  }
+
+  esCaritaBien(valor: number | null | undefined): boolean {
+    return valor !== null && valor !== undefined && Number(valor) >= 4.0;
+  }
+
+  esCaritaNormal(valor: number | null | undefined): boolean {
+    return (
+      valor !== null &&
+      valor !== undefined &&
+      Number(valor) > 0 &&
+      Number(valor) < 4.0
+    );
+  }
+
+  seleccionarCaritaPeriodo(
+    item: CalificacionPlanillaItemModel,
+    periodo: 'notaP1' | 'notaP2' | 'notaP3' | 'notaP4',
+    tipo: 'BIEN' | 'NORMAL'
+  ): void {
+    const valorObjetivo = tipo === 'BIEN' ? 5.0 : 3.0;
+    const valorActual = item.calificacion[periodo];
+    const coincideActual =
+      tipo === 'BIEN'
+        ? this.esCaritaBien(valorActual)
+        : this.esCaritaNormal(valorActual);
+
+    item.calificacion[periodo] = coincideActual ? null : valorObjetivo;
+
+    // Recalcular vista previa de definitiva con carita
+    const notas = [
+      item.calificacion.notaP1,
+      item.calificacion.notaP2,
+      item.calificacion.notaP3,
+      item.calificacion.notaP4,
+    ]
+      .filter((n) => n !== null && n !== undefined && !isNaN(Number(n)))
+      .map((n) => Number(n));
+
+    if (notas.length === 0) {
+      item.calificacion.notaDefinitiva = null;
+    } else {
+      const prom = notas.reduce((a, b) => a + b, 0) / notas.length;
+      item.calificacion.notaDefinitiva = prom >= 4.0 ? 5.0 : 3.0;
+    }
+  }
 
   seleccionarAsignacionParaCalificar(asig: AsignacionDocenteModel): void {
     this.asignacionCalificando = asig;

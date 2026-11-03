@@ -46,6 +46,12 @@ export interface HorarioClaseModel {
     grado: string;
     grupo: string;
     nivel: string;
+    horaEntrada?: string;
+    horaSalida?: string;
+    horaInicioDescanso?: string;
+    horaFinDescanso?: string;
+    tipoCalificacion?: 'CARITAS' | 'NUMERICA' | string;
+    directorDocenteId?: string | null;
     aula?: string | null;
   };
   materia?: MateriaModel;
@@ -73,6 +79,12 @@ export interface AsignacionDocenteModel {
     grado: GradoEscolarTipo | string;
     grupo: string;
     nivel: string;
+    horaEntrada?: string;
+    horaSalida?: string;
+    horaInicioDescanso?: string;
+    horaFinDescanso?: string;
+    tipoCalificacion?: 'CARITAS' | 'NUMERICA' | string;
+    directorDocenteId?: string | null;
     aula?: string | null;
   };
   materia?: MateriaModel;
@@ -117,6 +129,11 @@ export interface CursoModel {
   ordenGrado: number;
   grupo: string;
   nivel: 'PREESCOLAR' | 'PRIMARIA' | string;
+  horaEntrada?: string;
+  horaSalida?: string;
+  horaInicioDescanso?: string;
+  horaFinDescanso?: string;
+  tipoCalificacion?: 'CARITAS' | 'NUMERICA' | string;
   anioLectivo: number;
   cupoMaximo: number;
   aula?: string | null;
@@ -139,6 +156,7 @@ export interface CursoModel {
     estadoMatricula: EstadoMatriculaTipo;
   }[];
   asignacionesDocentes?: AsignacionDocenteModel[];
+  horarios?: HorarioClaseModel[];
 }
 
 export interface EstudianteModel {
@@ -169,6 +187,12 @@ export interface EstudianteModel {
     grado: string;
     grupo: string;
     nivel: string;
+    horaEntrada?: string;
+    horaSalida?: string;
+    horaInicioDescanso?: string;
+    horaFinDescanso?: string;
+    tipoCalificacion?: 'CARITAS' | 'NUMERICA' | string;
+    directorDocenteId?: string | null;
     aula?: string | null;
   };
 }

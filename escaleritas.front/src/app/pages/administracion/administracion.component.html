@@ -414,6 +414,20 @@
               </span>
               <h3 class="course-title">{{ c.nombre }} (Grupo {{ c.grupo }})</h3>
               <p class="course-aula">{{ c.aula || 'Salón Principal' }} · Año Lectivo {{ c.anioLectivo }}</p>
+              <div style="margin-top: 6px;">
+                <span
+                  *ngIf="esSalonCaritas(c)"
+                  class="status-pill status-active"
+                  style="font-size: 11px; background: #fef3c7; color: #92400e;">
+                  😊 Calificación Caritas: :) Bien / :| Normal
+                </span>
+                <span
+                  *ngIf="!esSalonCaritas(c)"
+                  class="status-pill"
+                  style="font-size: 11px; background: #e0e7ff; color: #3730a3;">
+                  🔢 Calificación Numérica: 1.0 a 5.0
+                </span>
+              </div>
             </div>
             <div class="cupo-circle">
               <strong>{{ c.estudiantes?.length || 0 }}/{{ c.cupoMaximo }}</strong>
@@ -955,6 +969,20 @@
             <div class="input-box">
               <input type="number" min="1" max="50" formControlName="cupoMaximo" />
             </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Sistema de Calificaciones del Salón <span class="req">*</span></label>
+          <div class="input-box">
+            <select formControlName="tipoCalificacion">
+              <option value="CARITAS">
+                😊 Caritas (Preescolar Jardín y Transición): :) Bien y :| Normal
+              </option>
+              <option value="NUMERICA">
+                🔢 Escala Numérica (Primaria 1° a 5°): 1.0 a 5.0
+              </option>
+            </select>
           </div>
         </div>
 

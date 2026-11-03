@@ -37,6 +37,9 @@ export class AcademicoService {
       cupoMaximo: number;
       aula: string;
       directorDocenteId: string | null;
+      tipoCalificacion: 'CARITAS' | 'NUMERICA' | string;
+      horaInicioDescanso: string;
+      horaFinDescanso: string;
     }>
   ): Observable<{ ok: boolean; mensaje: string; curso: CursoModel }> {
     return this.http.put<{ ok: boolean; mensaje: string; curso: CursoModel }>(
@@ -266,7 +269,11 @@ export class AcademicoService {
   }
 
   crearHorario(datos: {
-    asignacionId: string;
+    asignacionId?: string;
+    cursoId?: string;
+    materiaId?: string;
+    docenteId?: string;
+    intensidadHoraria?: number;
     diaSemana: string;
     horaInicio: string;
     horaFin: string;
@@ -277,6 +284,24 @@ export class AcademicoService {
       mensaje: string;
       horario: HorarioClaseModel;
     }>(`${this.baseUrl}/horarios`, datos);
+  }
+
+  actualizarHorario(
+    horarioId: string,
+    datos: Partial<{
+      docenteId: string;
+      materiaId: string;
+      diaSemana: string;
+      horaInicio: string;
+      horaFin: string;
+      aula: string;
+    }>
+  ): Observable<{ ok: boolean; mensaje: string; horario: HorarioClaseModel }> {
+    return this.http.put<{
+      ok: boolean;
+      mensaje: string;
+      horario: HorarioClaseModel;
+    }>(`${this.baseUrl}/horarios/${horarioId}`, datos);
   }
 
   eliminarHorario(

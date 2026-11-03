@@ -21,6 +21,7 @@ import {
   deleteAsignacionDocenteController,
   getHorariosController,
   postHorarioController,
+  putHorarioController,
   deleteHorarioController,
   getCalificacionesCursoMateriaController,
   postCalificacionController,
@@ -60,9 +61,10 @@ router.delete('/docentes/:id', autorizarRoles('ADMIN'), deleteDocenteController)
 router.post('/docentes/:id/asignaciones', autorizarRoles('ADMIN', 'DOCENTE'), postAsignarDocenteCursoController);
 router.delete('/asignaciones/:asignacionId', autorizarRoles('ADMIN', 'DOCENTE'), deleteAsignacionDocenteController);
 
-// 5. Horarios Semanales por Materia Enseñada (Docente / Admin)
+// 5. Horarios Semanales Únicos por Salón y Asignación de Profesoras
 router.get('/horarios', getHorariosController);
 router.post('/horarios', autorizarRoles('ADMIN', 'DOCENTE'), postHorarioController);
+router.put('/horarios/:id', autorizarRoles('ADMIN', 'DOCENTE'), putHorarioController);
 router.delete('/horarios/:id', autorizarRoles('ADMIN', 'DOCENTE'), deleteHorarioController);
 
 // 6. Calificaciones y Portal Padre de Familia / Estudiante

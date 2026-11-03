@@ -21,6 +21,7 @@ import {
   eliminarAsignacionDocenteBL,
   listarHorariosBL,
   crearHorarioClaseBL,
+  actualizarHorarioClaseBL,
   eliminarHorarioClaseBL,
   listarCalificacionesPorCursoMateriaBL,
   guardarCalificacionBL,
@@ -374,6 +375,23 @@ export const postHorarioController = async (
     res.status(201).json({
       ok: true,
       mensaje: 'Bloque de horario semanal registrado correctamente',
+      horario,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const putHorarioController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const horario = await actualizarHorarioClaseBL(req.params.id, req.body);
+    res.status(200).json({
+      ok: true,
+      mensaje: 'Bloque de horario del salón actualizado correctamente',
       horario,
     });
   } catch (error) {

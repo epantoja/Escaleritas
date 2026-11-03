@@ -20,9 +20,43 @@ export enum GradoEscolar {
   QUINTO = 'QUINTO',
 }
 
+export interface ConfiguracionSalonCache {
+  horaEntrada: string;
+  horaSalida: string;
+  horaInicioDescanso: string;
+  horaFinDescanso: string;
+  tipoCalificacion: 'CARITAS' | 'NUMERICA';
+}
+
+export const cacheConfiguracionSalon = new Map<string, ConfiguracionSalonCache>();
+export const overridesTipoCalificacion = new Map<string, 'CARITAS' | 'NUMERICA'>();
+
+export const obtenerConfigDefaultsCurso = (
+  nivel?: string,
+  grado?: string
+): ConfiguracionSalonCache => {
+  const esPreescolar =
+    nivel === 'PREESCOLAR' ||
+    grado === GradoEscolar.JARDIN ||
+    grado === GradoEscolar.TRANSICION;
+  return {
+    horaEntrada: esPreescolar ? '07:30' : '07:00',
+    horaSalida: esPreescolar ? '12:00' : '13:00',
+    horaInicioDescanso: esPreescolar ? '09:30' : '10:00',
+    horaFinDescanso: esPreescolar ? '10:00' : '10:30',
+    tipoCalificacion: esPreescolar ? 'CARITAS' : 'NUMERICA',
+  };
+};
+
 export class Curso extends Model<
-  InferAttributes<Curso, { omit: 'estudiantes' | 'docentes' | 'directorGrupo' }>,
-  InferCreationAttributes<Curso, { omit: 'estudiantes' | 'docentes' | 'directorGrupo' }>
+  InferAttributes<
+    Curso,
+    { omit: 'estudiantes' | 'docentes' | 'directorGrupo' | 'configuracionHorario' }
+  >,
+  InferCreationAttributes<
+    Curso,
+    { omit: 'estudiantes' | 'docentes' | 'directorGrupo' | 'configuracionHorario' }
+  >
 > {
   declare id: CreationOptional<string>;
   declare codigo: string;
@@ -31,6 +65,11 @@ export class Curso extends Model<
   declare ordenGrado: CreationOptional<number>;
   declare grupo: CreationOptional<string>;
   declare nivel: CreationOptional<'PREESCOLAR' | 'PRIMARIA' | string>;
+  declare horaEntrada: CreationOptional<string>;
+  declare horaSalida: CreationOptional<string>;
+  declare horaInicioDescanso: CreationOptional<string>;
+  declare horaFinDescanso: CreationOptional<string>;
+  declare tipoCalificacion: CreationOptional<'CARITAS' | 'NUMERICA' | string>;
   declare anioLectivo: CreationOptional<number>;
   declare cupoMaximo: CreationOptional<number>;
   declare aula: CreationOptional<string | null>;
@@ -43,6 +82,7 @@ export class Curso extends Model<
   declare estudiantes?: NonAttribute<any[]>;
   declare docentes?: NonAttribute<any[]>;
   declare directorGrupo?: NonAttribute<any>;
+  declare configuracionHorario?: NonAttribute<any>;
 }
 
 Curso.init(
@@ -111,6 +151,135 @@ Curso.init(
           args: [['PREESCOLAR', 'PRIMARIA']],
           msg: 'El nivel educativo debe ser PREESCOLAR o PRIMARIA',
         },
+      },
+    },
+    horaEntrada: {
+      type: DataTypes.VIRTUAL(DataTypes.STRING, ['id', 'nivel', 'grado']),
+      get() {
+        const id = this.getDataValue('id');
+        if (id && cacheConfiguracionSalon.has(id)) {
+          return cacheConfiguracionSalon.get(id)!.horaEntrada;
+        }
+        return obtenerConfigDefaultsCurso(
+          this.getDataValue('nivel'),
+          this.getDataValue('grado')
+        ).horaEntrada;
+      },
+      set(valor: string) {
+        const id = this.getDataValue('id');
+        if (id && valor) {
+          const actual =
+            cacheConfiguracionSalon.get(id) ||
+            obtenerConfigDefaultsCurso(
+              this.getDataValue('nivel'),
+              this.getDataValue('grado')
+            );
+          cacheConfiguracionSalon.set(id, { ...actual, horaEntrada: valor });
+        }
+      },
+    },
+    horaSalida: {
+      type: DataTypes.VIRTUAL(DataTypes.STRING, ['id', 'nivel', 'grado']),
+      get() {
+        const id = this.getDataValue('id');
+        if (id && cacheConfiguracionSalon.has(id)) {
+          return cacheConfiguracionSalon.get(id)!.horaSalida;
+        }
+        return obtenerConfigDefaultsCurso(
+          this.getDataValue('nivel'),
+          this.getDataValue('grado')
+        ).horaSalida;
+      },
+      set(valor: string) {
+        const id = this.getDataValue('id');
+        if (id && valor) {
+          const actual =
+            cacheConfiguracionSalon.get(id) ||
+            obtenerConfigDefaultsCurso(
+              this.getDataValue('nivel'),
+              this.getDataValue('grado')
+            );
+          cacheConfiguracionSalon.set(id, { ...actual, horaSalida: valor });
+        }
+      },
+    },
+    horaInicioDescanso: {
+      type: DataTypes.VIRTUAL(DataTypes.STRING, ['id', 'nivel', 'grado']),
+      get() {
+        const id = this.getDataValue('id');
+        if (id && cacheConfiguracionSalon.has(id)) {
+          return cacheConfiguracionSalon.get(id)!.horaInicioDescanso;
+        }
+        return obtenerConfigDefaultsCurso(
+          this.getDataValue('nivel'),
+          this.getDataValue('grado')
+        ).horaInicioDescanso;
+      },
+      set(valor: string) {
+        const id = this.getDataValue('id');
+        if (id && valor) {
+          const actual =
+            cacheConfiguracionSalon.get(id) ||
+            obtenerConfigDefaultsCurso(
+              this.getDataValue('nivel'),
+              this.getDataValue('grado')
+            );
+          cacheConfiguracionSalon.set(id, { ...actual, horaInicioDescanso: valor });
+        }
+      },
+    },
+    horaFinDescanso: {
+      type: DataTypes.VIRTUAL(DataTypes.STRING, ['id', 'nivel', 'grado']),
+      get() {
+        const id = this.getDataValue('id');
+        if (id && cacheConfiguracionSalon.has(id)) {
+          return cacheConfiguracionSalon.get(id)!.horaFinDescanso;
+        }
+        return obtenerConfigDefaultsCurso(
+          this.getDataValue('nivel'),
+          this.getDataValue('grado')
+        ).horaFinDescanso;
+      },
+      set(valor: string) {
+        const id = this.getDataValue('id');
+        if (id && valor) {
+          const actual =
+            cacheConfiguracionSalon.get(id) ||
+            obtenerConfigDefaultsCurso(
+              this.getDataValue('nivel'),
+              this.getDataValue('grado')
+            );
+          cacheConfiguracionSalon.set(id, { ...actual, horaFinDescanso: valor });
+        }
+      },
+    },
+    tipoCalificacion: {
+      type: DataTypes.VIRTUAL(DataTypes.STRING, ['id', 'nivel', 'grado']),
+      get() {
+        const id = this.getDataValue('id');
+        if (id && cacheConfiguracionSalon.has(id)) {
+          return cacheConfiguracionSalon.get(id)!.tipoCalificacion;
+        }
+        if (id && overridesTipoCalificacion.has(id)) {
+          return overridesTipoCalificacion.get(id)!;
+        }
+        return obtenerConfigDefaultsCurso(
+          this.getDataValue('nivel'),
+          this.getDataValue('grado')
+        ).tipoCalificacion;
+      },
+      set(valor: 'CARITAS' | 'NUMERICA' | string) {
+        const id = this.getDataValue('id');
+        if (id && (valor === 'CARITAS' || valor === 'NUMERICA')) {
+          overridesTipoCalificacion.set(id, valor);
+          const actual =
+            cacheConfiguracionSalon.get(id) ||
+            obtenerConfigDefaultsCurso(
+              this.getDataValue('nivel'),
+              this.getDataValue('grado')
+            );
+          cacheConfiguracionSalon.set(id, { ...actual, tipoCalificacion: valor });
+        }
       },
     },
     anioLectivo: {

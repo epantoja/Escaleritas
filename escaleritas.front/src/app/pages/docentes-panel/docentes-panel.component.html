@@ -41,7 +41,7 @@
       [class.active]="vistaActiva === 'CALIFICACIONES'"
       (click)="vistaActiva = 'CALIFICACIONES'">
       <span class="material-icons">fact_check</span>
-      <span>2. Registrar Notas por Materia</span>
+      <span>2. Registrar Notas por Salón</span>
     </button>
 
     <button
@@ -286,29 +286,86 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- VISTA 2: PLANILLA DE CALIFICACIONES POR MATERIA                       -->
+  <!-- VISTA 2: PLANILLA DE CALIFICACIONES POR SALÓN Y MATERIA               -->
   <!-- ===================================================================== -->
   <section *ngIf="vistaActiva === 'CALIFICACIONES'" class="card-box">
     <div class="grades-header">
       <div>
-        <h2>Planilla de Calificaciones por Materia (Escala 1.0 a 5.0)</h2>
-        <p>Selecciona una de las materias que enseñas para ingresar o actualizar las notas de los estudiantes.</p>
+        <h2 *ngIf="esCalificacionCaritas">
+          Registro de Notas por Salón — {{ asignacionCalificando?.curso?.nombre }} (Grupo {{ asignacionCalificando?.curso?.grupo }})
+        </h2>
+        <h2 *ngIf="!esCalificacionCaritas">
+          Registro de Notas por Salón — {{ asignacionCalificando?.curso?.nombre || 'Primaria' }} (Escala 1.0 a 5.0)
+        </h2>
+        <p *ngIf="esCalificacionCaritas">
+          Selecciona el salón de clase y la materia para calificar con caritas:
+          <strong>😊 :) Bien</strong> o <strong>😐 :| Normal</strong>.
+        </p>
+        <p *ngIf="!esCalificacionCaritas">
+          Selecciona el salón de clase y la materia para registrar las calificaciones numéricas de <strong>1.0 a 5.0</strong>.
+        </p>
       </div>
 
-      <div class="subject-pills">
+      <!-- Selectores por Salón de Clase y Materia (igual que en el Registro de Horario) -->
+      <div class="grid-2" *ngIf="salonesAsignadosDocente.length > 0" style="max-width: 780px;">
+        <div class="field">
+          <label>1. Salón de Clase / Grado <span class="req">*</span></label>
+          <div class="input-box">
+            <select
+              [ngModel]="salonCalificandoId"
+              (ngModelChange)="onCambioSalonCalificar($event)">
+              <option *ngFor="let s of salonesAsignadosDocente" [value]="s.id">
+                {{ s.nombre }} - Grupo {{ s.grupo }} ({{ esSalonCaritas(s) ? '😊 Caritas :) Bien / :| Normal' : '🔢 Numérica 1.0 a 5.0' }})
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>2. Materia que Enseño en este Salón <span class="req">*</span></label>
+          <div class="input-box">
+            <select
+              [ngModel]="asignacionCalificando?.id"
+              (ngModelChange)="onCambioAsignacionCalificarId($event)">
+              <option *ngFor="let a of asignacionesDelSalonCalificando" [value]="a.id">
+                {{ a.materia?.nombre }} ({{ a.intensidadHoraria }}h/sem)
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Píldoras de las materias de este salón seleccionado -->
+      <div class="subject-pills" *ngIf="asignacionesDelSalonCalificando.length > 0">
         <button
-          *ngFor="let a of docenteActivo?.asignaciones"
+          *ngFor="let a of asignacionesDelSalonCalificando"
           type="button"
           class="subj-pill"
           [class.active]="asignacionCalificando?.id === a.id"
           (click)="seleccionarAsignacionParaCalificar(a)">
           <strong>{{ a.materia?.nombre }}</strong>
-          <span>{{ a.curso?.nombre }}</span>
+          <span>
+            Salón: {{ a.curso?.nombre }} ·
+            {{ esSalonCaritas(a.curso) ? '😊 Caritas' : '🔢 1.0-5.0' }}
+          </span>
         </button>
       </div>
     </div>
 
     <div class="table-wrap" *ngIf="asignacionCalificando; else seleccioneMateria">
+      <!-- Leyenda informativa de escala activa -->
+      <div class="schedule-rule-banner" [class.preescolar]="esCalificacionCaritas" style="margin-bottom: 16px;">
+        <span class="material-icons">{{ esCalificacionCaritas ? 'sentiment_satisfied_alt' : 'calculate' }}</span>
+        <div *ngIf="esCalificacionCaritas">
+          <strong>Escala Preescolar ({{ asignacionCalificando.curso?.nombre }}): Calificación con Caritas</strong>
+          <span>Haz clic en <strong>😊 :) Bien</strong> (logro alcanzado satisfactoriamente) o <strong>😐 :| Normal</strong> (en proceso / normal) y pulsa Guardar.</span>
+        </div>
+        <div *ngIf="!esCalificacionCaritas">
+          <strong>Escala Primaria ({{ asignacionCalificando.curso?.nombre }}): Calificación Numérica 1.0 a 5.0</strong>
+          <span>Ingresa valores entre <strong>1.0 y 5.0</strong> por periodo; el sistema calcula automáticamente la nota definitiva.</span>
+        </div>
+      </div>
+
       <table class="erp-table">
         <thead>
           <tr>
@@ -329,54 +386,102 @@
             <td>
               <strong>{{ item.estudiante.apellidos }}, {{ item.estudiante.nombres }}</strong>
             </td>
-            <td>
-              <input
-                type="number"
-                step="0.1"
-                min="1"
-                max="5"
-                class="grade-input"
-                [(ngModel)]="item.calificacion.notaP1"
-                placeholder="1.0-5.0" />
-            </td>
-            <td>
-              <input
-                type="number"
-                step="0.1"
-                min="1"
-                max="5"
-                class="grade-input"
-                [(ngModel)]="item.calificacion.notaP2"
-                placeholder="1.0-5.0" />
-            </td>
-            <td>
-              <input
-                type="number"
-                step="0.1"
-                min="1"
-                max="5"
-                class="grade-input"
-                [(ngModel)]="item.calificacion.notaP3"
-                placeholder="1.0-5.0" />
-            </td>
-            <td>
-              <input
-                type="number"
-                step="0.1"
-                min="1"
-                max="5"
-                class="grade-input"
-                [(ngModel)]="item.calificacion.notaP4"
-                placeholder="1.0-5.0" />
-            </td>
-            <td>
-              <span
-                class="final-badge"
-                [class.pass]="(item.calificacion.notaDefinitiva || 0) >= 3.0"
-                [class.fail]="item.calificacion.notaDefinitiva && item.calificacion.notaDefinitiva < 3.0">
-                {{ item.calificacion.notaDefinitiva || '—' }}
-              </span>
-            </td>
+
+            <!-- MODO CARITAS (JARDÍN Y TRANSICIÓN): :) Bien vs :| Normal -->
+            <ng-container *ngIf="esCalificacionCaritas; else celdasNumericas">
+              <td *ngFor="let per of ['notaP1', 'notaP2', 'notaP3', 'notaP4']">
+                <div class="carita-selector">
+                  <button
+                    type="button"
+                    class="carita-btn carita-bien"
+                    [class.selected]="esCaritaBien($any(item.calificacion)[per])"
+                    (click)="seleccionarCaritaPeriodo(item, $any(per), 'BIEN')"
+                    title="Carita Sonriente :) Bien">
+                    <span class="carita-face">😊 :)</span>
+                    <span class="carita-label">Bien</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="carita-btn carita-normal"
+                    [class.selected]="esCaritaNormal($any(item.calificacion)[per])"
+                    (click)="seleccionarCaritaPeriodo(item, $any(per), 'NORMAL')"
+                    title="Carita Seria :| Normal">
+                    <span class="carita-face">😐 :|</span>
+                    <span class="carita-label">Normal</span>
+                  </button>
+                </div>
+              </td>
+              <td>
+                <span
+                  *ngIf="esCaritaBien(item.calificacion.notaDefinitiva)"
+                  class="carita-def-badge bien">
+                  😊 :) Bien
+                </span>
+                <span
+                  *ngIf="esCaritaNormal(item.calificacion.notaDefinitiva)"
+                  class="carita-def-badge normal">
+                  😐 :| Normal
+                </span>
+                <span
+                  *ngIf="!esCaritaBien(item.calificacion.notaDefinitiva) && !esCaritaNormal(item.calificacion.notaDefinitiva)"
+                  class="final-badge">
+                  —
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- MODO NUMÉRICO (GRADOS 1° A 5° PRIMARIA): 1.0 a 5.0 -->
+            <ng-template #celdasNumericas>
+              <td>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="5"
+                  class="grade-input"
+                  [(ngModel)]="item.calificacion.notaP1"
+                  placeholder="1.0-5.0" />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="5"
+                  class="grade-input"
+                  [(ngModel)]="item.calificacion.notaP2"
+                  placeholder="1.0-5.0" />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="5"
+                  class="grade-input"
+                  [(ngModel)]="item.calificacion.notaP3"
+                  placeholder="1.0-5.0" />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="5"
+                  class="grade-input"
+                  [(ngModel)]="item.calificacion.notaP4"
+                  placeholder="1.0-5.0" />
+              </td>
+              <td>
+                <span
+                  class="final-badge"
+                  [class.pass]="(item.calificacion.notaDefinitiva || 0) >= 3.0"
+                  [class.fail]="item.calificacion.notaDefinitiva && item.calificacion.notaDefinitiva < 3.0">
+                  {{ item.calificacion.notaDefinitiva || '—' }}
+                </span>
+              </td>
+            </ng-template>
+
             <td>
               <input
                 type="text"

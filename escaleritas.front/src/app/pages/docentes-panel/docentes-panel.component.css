@@ -515,6 +515,83 @@
 .final-badge.pass { background: #dcfce7; color: #15803d; }
 .final-badge.fail { background: #fee2e2; color: #b91c1c; }
 
+/* Selector de Caritas para Jardín y Transición */
+.carita-selector {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.carita-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  border-radius: 9px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 58px;
+}
+
+.carita-btn:hover {
+  border-color: #94a3b8;
+  background: #ffffff;
+}
+
+.carita-face {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.carita-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.carita-btn.carita-bien.selected {
+  background: #dcfce7;
+  border-color: #16a34a;
+  color: #15803d;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.18);
+}
+
+.carita-btn.carita-normal.selected {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #b45309;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.18);
+}
+
+.carita-def-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.carita-def-badge.bien {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.carita-def-badge.normal {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
 .btn-save-row {
   height: 34px;
   padding: 0 12px;

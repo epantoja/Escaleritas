@@ -81,9 +81,39 @@ export class PortalEstudianteComponent implements OnInit {
     const cod = (this.curso.codigo || '').toUpperCase();
     return (
       this.curso.nivel === 'PREESCOLAR' ||
+      this.curso.grado === 'JARDIN' ||
+      this.curso.grado === 'TRANSICION' ||
       cod.includes('TRANS') ||
       cod.includes('JAR')
     );
+  }
+
+  get esCalificacionCaritas(): boolean {
+    if (!this.curso) {
+      return false;
+    }
+    if (this.curso.tipoCalificacion === 'CARITAS') {
+      return true;
+    }
+    if (this.curso.tipoCalificacion === 'NUMERICA') {
+      return false;
+    }
+    return this.esCursoPreescolar;
+  }
+
+  formatearCarita(nota: number | null | undefined): {
+    simbolo: string;
+    texto: string;
+    clase: string;
+  } | null {
+    if (nota === null || nota === undefined) {
+      return null;
+    }
+    const val = Number(nota);
+    if (val >= 4.0) {
+      return { simbolo: '😊 :)', texto: 'Bien', clase: 'carita-pill-bien' };
+    }
+    return { simbolo: '😐 :|', texto: 'Normal', clase: 'carita-pill-normal' };
   }
 
   horariosAntesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
@@ -101,6 +131,12 @@ export class PortalEstudianteComponent implements OnInit {
       return { etiqueta: 'En curso', clase: 'perf-pending' };
     }
     const valor = Number(nota);
+    if (this.esCalificacionCaritas) {
+      if (valor >= 4.0) {
+        return { etiqueta: '😊 :) Bien', clase: 'perf-sup' };
+      }
+      return { etiqueta: '😐 :| Normal', clase: 'perf-basic' };
+    }
     if (valor >= 4.6) {
       return { etiqueta: 'Superior', clase: 'perf-sup' };
     }
@@ -122,7 +158,11 @@ export class PortalEstudianteComponent implements OnInit {
       return '—';
     }
     const suma = validas.reduce((a, b) => a + b, 0);
-    return (suma / validas.length).toFixed(2);
+    const prom = suma / validas.length;
+    if (this.esCalificacionCaritas) {
+      return prom >= 4.0 ? '😊 :) Bien' : '😐 :| Normal';
+    }
+    return prom.toFixed(2);
   }
 }
 

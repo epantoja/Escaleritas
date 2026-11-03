@@ -4,6 +4,7 @@ import { config } from '../config/config';
 import {
   sequelize,
   Curso,
+  ConfiguracionSalon,
   Materia,
   Docente,
   DocenteCursoMateria,
@@ -14,8 +15,32 @@ import {
   Rol,
   RolCodigo,
 } from '../models';
+import {
+  cacheConfiguracionSalon,
+  obtenerConfigDefaultsCurso,
+  overridesTipoCalificacion,
+} from '../models/curso.model';
 import { AppError } from '../middlewares/error.middleware';
 import { JwtUserPayload } from '../middlewares/autenticacion';
+
+export const sincronizarCacheConfiguracionSalones = async (): Promise<void> => {
+  try {
+    const configs = await ConfiguracionSalon.findAll();
+    for (const cfg of configs) {
+      const tipo = cfg.tipoCalificacion === 'CARITAS' ? 'CARITAS' : 'NUMERICA';
+      cacheConfiguracionSalon.set(cfg.cursoId, {
+        horaEntrada: cfg.horaEntrada,
+        horaSalida: cfg.horaSalida,
+        horaInicioDescanso: cfg.horaInicioDescanso,
+        horaFinDescanso: cfg.horaFinDescanso,
+        tipoCalificacion: tipo,
+      });
+      overridesTipoCalificacion.set(cfg.cursoId, tipo);
+    }
+  } catch (_err) {
+    // Si la tabla aún no se ha sincronizado, continúa con los valores por defecto en memoria
+  }
+};
 
 // ============================================================================
 // INTERFACES Y DTOs
@@ -79,10 +104,23 @@ export interface CrearDocenteDTO {
 }
 
 export interface CrearHorarioDTO {
-  asignacionId: string;
+  asignacionId?: string;
+  cursoId?: string;
+  materiaId?: string;
+  docenteId?: string;
+  intensidadHoraria?: number;
   diaSemana: string;
   horaInicio: string;
   horaFin: string;
+  aula?: string | null;
+}
+
+export interface ActualizarHorarioDTO {
+  docenteId?: string;
+  materiaId?: string;
+  diaSemana?: string;
+  horaInicio?: string;
+  horaFin?: string;
   aula?: string | null;
 }
 
@@ -91,10 +129,10 @@ export interface GuardarCalificacionDTO {
   cursoId: string;
   materiaId: string;
   docenteId?: string | null;
-  notaP1?: number | null;
-  notaP2?: number | null;
-  notaP3?: number | null;
-  notaP4?: number | null;
+  notaP1?: number | string | null;
+  notaP2?: number | string | null;
+  notaP3?: number | string | null;
+  notaP4?: number | string | null;
   observacion?: string | null;
 }
 
@@ -103,6 +141,8 @@ export interface GuardarCalificacionDTO {
 // ============================================================================
 
 export const listarCursosBL = async () => {
+  await sincronizarCacheConfiguracionSalones();
+
   const cursos = await Curso.findAll({
     where: { estado: 1 },
     include: [
@@ -157,6 +197,24 @@ export const listarCursosBL = async () => {
           },
         ],
       },
+      {
+        model: HorarioClase,
+        as: 'horarios',
+        where: { estado: 1 },
+        required: false,
+        include: [
+          {
+            model: Materia,
+            as: 'materia',
+            attributes: ['id', 'codigo', 'nombre', 'area', 'intensidadHoraria'],
+          },
+          {
+            model: Docente,
+            as: 'docente',
+            attributes: ['id', 'codigoDocente', 'nombres', 'apellidos', 'especialidad'],
+          },
+        ],
+      },
     ],
     order: [
       ['ordenGrado', 'ASC'],
@@ -168,7 +226,7 @@ export const listarCursosBL = async () => {
 };
 
 /**
- * Permite actualizar salón/curso y asignar una Docente como Directora de Grupo
+ * Permite actualizar salón/curso, parametrizar su horario de descanso y asignar su Directora de Grupo
  */
 export const actualizarCursoBL = async (
   cursoId: string,
@@ -177,8 +235,13 @@ export const actualizarCursoBL = async (
     cupoMaximo: number;
     aula: string;
     directorDocenteId: string | null;
+    tipoCalificacion: 'CARITAS' | 'NUMERICA' | string;
+    horaInicioDescanso: string;
+    horaFinDescanso: string;
   }>
 ) => {
+  await sincronizarCacheConfiguracionSalones();
+
   const curso = await Curso.findByPk(cursoId);
   if (!curso) {
     throw new AppError('El curso o salón especificado no existe', 404);
@@ -189,7 +252,83 @@ export const actualizarCursoBL = async (
     if (!docente) {
       throw new AppError('La docente seleccionada como directora de grupo no existe', 404);
     }
+    // Garantizar que una profesora sea directora de grupo de un único salón activo a la vez
+    await Curso.update(
+      { directorDocenteId: null },
+      {
+        where: {
+          directorDocenteId: datos.directorDocenteId,
+          id: { [Op.ne]: cursoId },
+        },
+      }
+    );
   }
+
+  const defaults = obtenerConfigDefaultsCurso(curso.nivel, curso.grado);
+  const actualConfig = cacheConfiguracionSalon.get(curso.id) || defaults;
+
+  // Las horas de entrada y salida están determinadas por el grado escolar:
+  // Jardín y Transición: 07:30 a 12:00 | Grados 1° a 5°: 07:00 a 13:00
+  const horaEntradaFija = defaults.horaEntrada;
+  const horaSalidaFija = defaults.horaSalida;
+
+  const nuevaHoraInicioDescanso =
+    datos.horaInicioDescanso?.trim() || actualConfig.horaInicioDescanso;
+  const nuevaHoraFinDescanso =
+    datos.horaFinDescanso?.trim() || actualConfig.horaFinDescanso;
+  const nuevoTipoCalificacion: 'CARITAS' | 'NUMERICA' =
+    datos.tipoCalificacion === 'CARITAS' || datos.tipoCalificacion === 'NUMERICA'
+      ? datos.tipoCalificacion
+      : actualConfig.tipoCalificacion;
+
+  if (nuevaHoraInicioDescanso >= nuevaHoraFinDescanso) {
+    throw new AppError(
+      'La hora de fin del descanso debe ser posterior a la hora de inicio del descanso',
+      422
+    );
+  }
+
+  if (
+    nuevaHoraInicioDescanso < horaEntradaFija ||
+    nuevaHoraFinDescanso > horaSalidaFija
+  ) {
+    throw new AppError(
+      `El descanso del salón ${curso.nombre} debe estar dentro de su jornada escolar (${horaEntradaFija} a ${horaSalidaFija})`,
+      422
+    );
+  }
+
+  // Persistir configuración de horario, descanso y calificación del salón
+  const [configRow, creada] = await ConfiguracionSalon.findOrCreate({
+    where: { cursoId: curso.id },
+    defaults: {
+      cursoId: curso.id,
+      horaEntrada: horaEntradaFija,
+      horaSalida: horaSalidaFija,
+      horaInicioDescanso: nuevaHoraInicioDescanso,
+      horaFinDescanso: nuevaHoraFinDescanso,
+      tipoCalificacion: nuevoTipoCalificacion,
+    },
+  });
+
+  if (!creada) {
+    await configRow.update({
+      horaEntrada: horaEntradaFija,
+      horaSalida: horaSalidaFija,
+      horaInicioDescanso: nuevaHoraInicioDescanso,
+      horaFinDescanso: nuevaHoraFinDescanso,
+      tipoCalificacion: nuevoTipoCalificacion,
+    });
+  }
+
+  cacheConfiguracionSalon.set(curso.id, {
+    horaEntrada: horaEntradaFija,
+    horaSalida: horaSalidaFija,
+    horaInicioDescanso: nuevaHoraInicioDescanso,
+    horaFinDescanso: nuevaHoraFinDescanso,
+    tipoCalificacion: nuevoTipoCalificacion,
+  });
+  overridesTipoCalificacion.set(curso.id, nuevoTipoCalificacion);
 
   await curso.update({
     nombre: datos.nombre?.trim() ?? curso.nombre,
@@ -319,6 +458,7 @@ export const eliminarMateriaBL = async (id: string) => {
 // ============================================================================
 
 export const listarEstudiantesBL = async (filtros: FiltroEstudiantesDTO) => {
+  await sincronizarCacheConfiguracionSalones();
   const whereClause: any = { estado: 1 };
 
   if (filtros.cursoId) {
@@ -346,7 +486,21 @@ export const listarEstudiantesBL = async (filtros: FiltroEstudiantesDTO) => {
       {
         model: Curso,
         as: 'curso',
-        attributes: ['id', 'codigo', 'nombre', 'grado', 'grupo', 'nivel', 'aula'],
+        attributes: [
+          'id',
+          'codigo',
+          'nombre',
+          'grado',
+          'grupo',
+          'nivel',
+          'horaEntrada',
+          'horaSalida',
+          'horaInicioDescanso',
+          'horaFinDescanso',
+          'tipoCalificacion',
+          'directorDocenteId',
+          'aula',
+        ],
       },
     ],
     order: [
@@ -562,7 +716,21 @@ export const listarDocentesBL = async (filtros: FiltroDocentesDTO) => {
           {
             model: Curso,
             as: 'curso',
-            attributes: ['id', 'codigo', 'nombre', 'grado', 'grupo', 'nivel', 'aula'],
+            attributes: [
+          'id',
+          'codigo',
+          'nombre',
+          'grado',
+          'grupo',
+          'nivel',
+          'horaEntrada',
+          'horaSalida',
+          'horaInicioDescanso',
+          'horaFinDescanso',
+          'tipoCalificacion',
+          'directorDocenteId',
+          'aula',
+        ],
           },
           {
             model: Materia,
@@ -603,7 +771,21 @@ export const obtenerDocentePorIdBL = async (id: string) => {
           {
             model: Curso,
             as: 'curso',
-            attributes: ['id', 'codigo', 'nombre', 'grado', 'grupo', 'nivel', 'aula'],
+            attributes: [
+          'id',
+          'codigo',
+          'nombre',
+          'grado',
+          'grupo',
+          'nivel',
+          'horaEntrada',
+          'horaSalida',
+          'horaInicioDescanso',
+          'horaFinDescanso',
+          'tipoCalificacion',
+          'directorDocenteId',
+          'aula',
+        ],
           },
           {
             model: Materia,
@@ -1123,6 +1305,8 @@ export const listarHorariosBL = async (filtros: {
   cursoId?: string;
   asignacionId?: string;
 }) => {
+  await sincronizarCacheConfiguracionSalones();
+
   const whereClause: any = { estado: 1 };
   if (filtros.docenteId) {
     whereClause.docenteId = filtros.docenteId;
@@ -1140,7 +1324,21 @@ export const listarHorariosBL = async (filtros: {
       {
         model: Curso,
         as: 'curso',
-        attributes: ['id', 'codigo', 'nombre', 'grado', 'grupo', 'nivel', 'aula'],
+        attributes: [
+          'id',
+          'codigo',
+          'nombre',
+          'grado',
+          'grupo',
+          'nivel',
+          'horaEntrada',
+          'horaSalida',
+          'horaInicioDescanso',
+          'horaFinDescanso',
+          'tipoCalificacion',
+          'directorDocenteId',
+          'aula',
+        ],
       },
       {
         model: Materia,
@@ -1160,76 +1358,119 @@ export const listarHorariosBL = async (filtros: {
   });
 };
 
-export const crearHorarioClaseBL = async (dto: CrearHorarioDTO) => {
-  const asignacion = await DocenteCursoMateria.findByPk(dto.asignacionId, {
-    include: [{ model: Curso, as: 'curso' }],
-  });
-
-  if (!asignacion) {
-    throw new AppError('La asignación de materia y curso no existe', 404);
-  }
-
-  if (dto.horaInicio >= dto.horaFin) {
+const validarReglasJornadaYDescansoSalon = (
+  curso: Curso,
+  horaInicio: string,
+  horaFin: string
+) => {
+  if (horaInicio >= horaFin) {
     throw new AppError('La hora de fin debe ser posterior a la hora de inicio', 422);
   }
 
-  const curso = asignacion.curso;
-  const esPreescolar =
-    curso?.nivel === 'PREESCOLAR' ||
-    curso?.grado === 'TRANSICION' ||
-    curso?.grado === 'JARDIN';
+  const defaults = obtenerConfigDefaultsCurso(curso.nivel, curso.grado);
+  const configSalon = cacheConfiguracionSalon.get(curso.id) || defaults;
 
-  // Reglas de jornada escolar según nivel (Transición/Preescolar vs Salones Superiores)
-  if (esPreescolar) {
-    // Transición / Jardín: 07:30 AM a 12:00 PM con descanso de 09:30 a 10:00 (30 min)
-    if (dto.horaInicio < '07:30' || dto.horaFin > '12:00') {
-      throw new AppError(
-        `El horario para ${curso?.nombre || 'Transición/Preescolar'} es de 07:30 AM a 12:00 PM`,
-        422
-      );
-    }
-    if (dto.horaInicio < '10:00' && dto.horaFin > '09:30') {
-      throw new AppError(
-        'No se puede programar clase durante los 30 minutos de descanso de Preescolar (09:30 AM - 10:00 AM)',
-        422
-      );
-    }
-  } else {
-    // Salones superiores (1° a 5° de Primaria): 07:00 AM a 01:00 PM (13:00) con descanso de 10:00 a 10:30 (30 min)
-    if (dto.horaInicio < '07:00' || dto.horaFin > '13:00') {
-      throw new AppError(
-        `El horario para ${curso?.nombre || 'Primaria'} es de 07:00 AM a 01:00 PM`,
-        422
-      );
-    }
-    if (dto.horaInicio < '10:30' && dto.horaFin > '10:00') {
-      throw new AppError(
-        'No se puede programar clase durante los 30 minutos de descanso de Primaria (10:00 AM - 10:30 AM)',
-        422
-      );
-    }
+  const horaEntrada = configSalon.horaEntrada || defaults.horaEntrada;
+  const horaSalida = configSalon.horaSalida || defaults.horaSalida;
+  const horaInicioDescanso =
+    configSalon.horaInicioDescanso || defaults.horaInicioDescanso;
+  const horaFinDescanso = configSalon.horaFinDescanso || defaults.horaFinDescanso;
+
+  if (horaInicio < horaEntrada || horaFin > horaSalida) {
+    throw new AppError(
+      `El horario del salón ${curso.nombre} debe estar entre las ${horaEntrada} y las ${horaSalida}`,
+      422
+    );
   }
 
-  // Verificar que la docente no tenga cruce de horario el mismo día
-  const horariosDocenteDia = await HorarioClase.findAll({
+  if (horaInicio < horaFinDescanso && horaFin > horaInicioDescanso) {
+    throw new AppError(
+      `No se puede programar clase durante el descanso parametrizado del salón ${curso.nombre} (${horaInicioDescanso} - ${horaFinDescanso})`,
+      422
+    );
+  }
+};
+
+const resolverAsignacionDocenteSalonMateria = async (
+  cursoId: string,
+  materiaId: string,
+  docenteId: string,
+  intensidadHorariaInput?: number
+): Promise<DocenteCursoMateria> => {
+  const curso = await Curso.findByPk(cursoId);
+  if (!curso) {
+    throw new AppError('El salón o curso seleccionado no existe', 404);
+  }
+  const materia = await Materia.findByPk(materiaId);
+  if (!materia) {
+    throw new AppError('La materia seleccionada no existe', 404);
+  }
+  const docente = await Docente.findByPk(docenteId);
+  if (!docente) {
+    throw new AppError('La profesora seleccionada no existe', 404);
+  }
+
+  const anioActual = new Date().getFullYear();
+  const [asignacion, creada] = await DocenteCursoMateria.findOrCreate({
     where: {
-      docenteId: asignacion.docenteId,
-      diaSemana: dto.diaSemana,
+      docenteId,
+      cursoId,
+      materiaId,
+      anioLectivo: anioActual,
+    },
+    defaults: {
+      docenteId,
+      cursoId,
+      materiaId,
+      intensidadHoraria:
+        Number(intensidadHorariaInput) || materia.intensidadHoraria || 4,
+      anioLectivo: anioActual,
+      esTitularCurso: curso.directorDocenteId === docenteId,
       estado: 1,
     },
   });
 
-  const cruceDocente = horariosDocenteDia.find(
-    (h) => dto.horaInicio < h.horaFin && dto.horaFin > h.horaInicio
-  );
-  if (cruceDocente) {
+  if (!creada && asignacion.estado !== 1) {
+    await asignacion.update({
+      estado: 1,
+      esTitularCurso: curso.directorDocenteId === docenteId,
+    });
+  }
+
+  return asignacion;
+};
+
+export const crearHorarioClaseBL = async (dto: CrearHorarioDTO) => {
+  await sincronizarCacheConfiguracionSalones();
+
+  let asignacion: DocenteCursoMateria | null = null;
+
+  if (dto.cursoId && dto.materiaId && dto.docenteId) {
+    asignacion = await resolverAsignacionDocenteSalonMateria(
+      dto.cursoId,
+      dto.materiaId,
+      dto.docenteId,
+      dto.intensidadHoraria
+    );
+  } else if (dto.asignacionId) {
+    asignacion = await DocenteCursoMateria.findByPk(dto.asignacionId);
+  }
+
+  if (!asignacion) {
     throw new AppError(
-      `La docente ya tiene una clase programada el ${dto.diaSemana} de ${cruceDocente.horaInicio} a ${cruceDocente.horaFin}`,
-      409
+      'Debes seleccionar el salón, la materia y la profesora asignada para programar el bloque de horario',
+      400
     );
   }
 
-  // Verificar que el salón de clase no tenga otra materia a la misma hora el mismo día
+  const curso = await Curso.findByPk(asignacion.cursoId);
+  if (!curso) {
+    throw new AppError('El salón especificado no existe', 404);
+  }
+
+  validarReglasJornadaYDescansoSalon(curso, dto.horaInicio, dto.horaFin);
+
+  // Verificar que el salón de clase mantenga su horario único sin solapamientos el mismo día
   const horariosSalonDia = await HorarioClase.findAll({
     where: {
       cursoId: asignacion.cursoId,
@@ -1243,7 +1484,28 @@ export const crearHorarioClaseBL = async (dto: CrearHorarioDTO) => {
   );
   if (cruceSalon) {
     throw new AppError(
-      `El salón ${curso?.nombre || ''} ya tiene una materia asignada el ${dto.diaSemana} de ${cruceSalon.horaInicio} a ${cruceSalon.horaFin}`,
+      `El horario único del salón ${curso.nombre} ya tiene una materia asignada el ${dto.diaSemana} de ${cruceSalon.horaInicio} a ${cruceSalon.horaFin}`,
+      409
+    );
+  }
+
+  // Verificar que la profesora no tenga cruce de horario en otro salón el mismo día
+  const horariosDocenteDia = await HorarioClase.findAll({
+    where: {
+      docenteId: asignacion.docenteId,
+      diaSemana: dto.diaSemana,
+      estado: 1,
+    },
+    include: [{ model: Curso, as: 'curso', attributes: ['nombre'] }],
+  });
+
+  const cruceDocente = horariosDocenteDia.find(
+    (h) => dto.horaInicio < h.horaFin && dto.horaFin > h.horaInicio
+  );
+  if (cruceDocente) {
+    const salonConflicto = (cruceDocente as any).curso?.nombre || 'otro salón';
+    throw new AppError(
+      `La profesora seleccionada ya dicta clase en ${salonConflicto} el ${dto.diaSemana} de ${cruceDocente.horaInicio} a ${cruceDocente.horaFin}`,
       409
     );
   }
@@ -1256,11 +1518,102 @@ export const crearHorarioClaseBL = async (dto: CrearHorarioDTO) => {
     diaSemana: dto.diaSemana,
     horaInicio: dto.horaInicio,
     horaFin: dto.horaFin,
-    aula: dto.aula?.trim() || asignacion.curso?.aula || 'Salón Principal',
+    aula: dto.aula?.trim() || curso.aula || 'Salón Principal',
     estado: 1,
   });
 
   return HorarioClase.findByPk(nuevoHorario.id, {
+    include: [
+      { model: Curso, as: 'curso' },
+      { model: Materia, as: 'materia' },
+      { model: Docente, as: 'docente' },
+    ],
+  });
+};
+
+export const actualizarHorarioClaseBL = async (
+  horarioId: string,
+  dto: ActualizarHorarioDTO
+) => {
+  await sincronizarCacheConfiguracionSalones();
+
+  const horario = await HorarioClase.findByPk(horarioId);
+  if (!horario) {
+    throw new AppError('El bloque de horario especificado no existe', 404);
+  }
+
+  const curso = await Curso.findByPk(horario.cursoId);
+  if (!curso) {
+    throw new AppError('El salón asociado al horario no existe', 404);
+  }
+
+  const nuevoDocenteId = dto.docenteId || horario.docenteId;
+  const nuevaMateriaId = dto.materiaId || horario.materiaId;
+  const nuevoDiaSemana = dto.diaSemana || horario.diaSemana;
+  const nuevaHoraInicio = dto.horaInicio || horario.horaInicio;
+  const nuevaHoraFin = dto.horaFin || horario.horaFin;
+
+  validarReglasJornadaYDescansoSalon(curso, nuevaHoraInicio, nuevaHoraFin);
+
+  // Verificar que no se cruce con otro bloque del mismo salón
+  const horariosSalonDia = await HorarioClase.findAll({
+    where: {
+      cursoId: horario.cursoId,
+      diaSemana: nuevoDiaSemana,
+      estado: 1,
+      id: { [Op.ne]: horario.id },
+    },
+  });
+
+  const cruceSalon = horariosSalonDia.find(
+    (h) => nuevaHoraInicio < h.horaFin && nuevaHoraFin > h.horaInicio
+  );
+  if (cruceSalon) {
+    throw new AppError(
+      `El salón ${curso.nombre} ya tiene otra materia programada el ${nuevoDiaSemana} de ${cruceSalon.horaInicio} a ${cruceSalon.horaFin}`,
+      409
+    );
+  }
+
+  // Verificar que la profesora asignada no tenga cruce en otro salón a esa hora
+  const horariosDocenteDia = await HorarioClase.findAll({
+    where: {
+      docenteId: nuevoDocenteId,
+      diaSemana: nuevoDiaSemana,
+      estado: 1,
+      id: { [Op.ne]: horario.id },
+    },
+    include: [{ model: Curso, as: 'curso', attributes: ['nombre'] }],
+  });
+
+  const cruceDocente = horariosDocenteDia.find(
+    (h) => nuevaHoraInicio < h.horaFin && nuevaHoraFin > h.horaInicio
+  );
+  if (cruceDocente) {
+    const salonConflicto = (cruceDocente as any).curso?.nombre || 'otro salón';
+    throw new AppError(
+      `La profesora seleccionada ya dicta clase en ${salonConflicto} el ${nuevoDiaSemana} de ${cruceDocente.horaInicio} a ${cruceDocente.horaFin}`,
+      409
+    );
+  }
+
+  const asignacion = await resolverAsignacionDocenteSalonMateria(
+    horario.cursoId,
+    nuevaMateriaId,
+    nuevoDocenteId
+  );
+
+  await horario.update({
+    asignacionId: asignacion.id,
+    docenteId: nuevoDocenteId,
+    materiaId: nuevaMateriaId,
+    diaSemana: nuevoDiaSemana,
+    horaInicio: nuevaHoraInicio,
+    horaFin: nuevaHoraFin,
+    aula: dto.aula !== undefined ? dto.aula?.trim() || curso.aula : horario.aula,
+  });
+
+  return HorarioClase.findByPk(horario.id, {
     include: [
       { model: Curso, as: 'curso' },
       { model: Materia, as: 'materia' },
@@ -1327,25 +1680,77 @@ export const listarCalificacionesPorCursoMateriaBL = async (
 export const guardarCalificacionBL = async (dto: GuardarCalificacionDTO) => {
   const anioActual = new Date().getFullYear();
 
-  const notasValidas = [dto.notaP1, dto.notaP2, dto.notaP3, dto.notaP4]
-    .filter((n) => n !== null && n !== undefined && !isNaN(Number(n)))
-    .map((n) => Number(n));
+  const curso = await Curso.findByPk(dto.cursoId);
+  const esCaritas =
+    curso?.tipoCalificacion === 'CARITAS' ||
+    (!curso?.tipoCalificacion &&
+      (curso?.grado === 'JARDIN' ||
+        curso?.grado === 'TRANSICION' ||
+        curso?.nivel === 'PREESCOLAR'));
 
-  for (const n of notasValidas) {
-    if (n < 1.0 || n > 5.0) {
-      throw new AppError('Las calificaciones deben estar en la escala de 1.0 a 5.0', 422);
+  const normalizarNotaPeriodo = (
+    valor: number | string | null | undefined
+  ): number | null => {
+    if (valor === null || valor === undefined || valor === '') {
+      return null;
     }
-  }
 
-  const definitiva =
-    notasValidas.length > 0
-      ? Number(
-          (
-            notasValidas.reduce((acc, curr) => acc + curr, 0) /
-            notasValidas.length
-          ).toFixed(1)
-        )
-      : null;
+    if (esCaritas) {
+      const txt = String(valor).trim().toUpperCase();
+      if (txt === ':)' || txt === 'BIEN') {
+        return 5.0;
+      }
+      if (txt === ':|' || txt === 'NORMAL') {
+        return 3.0;
+      }
+      const num = Number(valor);
+      if (!isNaN(num)) {
+        if (num >= 4.0) {
+          return 5.0; // :) Bien
+        }
+        if (num >= 1.0) {
+          return 3.0; // :| Normal
+        }
+      }
+      throw new AppError(
+        'Para Jardín y Transición la calificación debe ser con caritas: :) Bien o :| Normal',
+        422
+      );
+    }
+
+    const num = Number(valor);
+    if (isNaN(num) || num < 1.0 || num > 5.0) {
+      throw new AppError(
+        'Para los grados 1° a 5° las calificaciones deben ser numéricas entre 1.0 y 5.0',
+        422
+      );
+    }
+    return Number(num.toFixed(1));
+  };
+
+  const notaP1Norm =
+    dto.notaP1 !== undefined ? normalizarNotaPeriodo(dto.notaP1) : undefined;
+  const notaP2Norm =
+    dto.notaP2 !== undefined ? normalizarNotaPeriodo(dto.notaP2) : undefined;
+  const notaP3Norm =
+    dto.notaP3 !== undefined ? normalizarNotaPeriodo(dto.notaP3) : undefined;
+  const notaP4Norm =
+    dto.notaP4 !== undefined ? normalizarNotaPeriodo(dto.notaP4) : undefined;
+
+  const notasValidas = [notaP1Norm, notaP2Norm, notaP3Norm, notaP4Norm].filter(
+    (n): n is number => n !== null && n !== undefined && !isNaN(Number(n))
+  );
+
+  let definitiva: number | null = null;
+  if (notasValidas.length > 0) {
+    const promedio =
+      notasValidas.reduce((acc, curr) => acc + curr, 0) / notasValidas.length;
+    definitiva = esCaritas
+      ? promedio >= 4.0
+        ? 5.0
+        : 3.0
+      : Number(promedio.toFixed(1));
+  }
 
   const [registro, creado] = await Calificacion.findOrCreate({
     where: {
@@ -1358,10 +1763,10 @@ export const guardarCalificacionBL = async (dto: GuardarCalificacionDTO) => {
       cursoId: dto.cursoId,
       materiaId: dto.materiaId,
       docenteId: dto.docenteId || null,
-      notaP1: dto.notaP1 ?? null,
-      notaP2: dto.notaP2 ?? null,
-      notaP3: dto.notaP3 ?? null,
-      notaP4: dto.notaP4 ?? null,
+      notaP1: notaP1Norm ?? null,
+      notaP2: notaP2Norm ?? null,
+      notaP3: notaP3Norm ?? null,
+      notaP4: notaP4Norm ?? null,
       notaDefinitiva: definitiva,
       observacion: dto.observacion?.trim() || null,
       anioLectivo: anioActual,
@@ -1372,10 +1777,10 @@ export const guardarCalificacionBL = async (dto: GuardarCalificacionDTO) => {
     await registro.update({
       cursoId: dto.cursoId,
       docenteId: dto.docenteId ?? registro.docenteId,
-      notaP1: dto.notaP1 !== undefined ? dto.notaP1 : registro.notaP1,
-      notaP2: dto.notaP2 !== undefined ? dto.notaP2 : registro.notaP2,
-      notaP3: dto.notaP3 !== undefined ? dto.notaP3 : registro.notaP3,
-      notaP4: dto.notaP4 !== undefined ? dto.notaP4 : registro.notaP4,
+      notaP1: notaP1Norm !== undefined ? notaP1Norm : registro.notaP1,
+      notaP2: notaP2Norm !== undefined ? notaP2Norm : registro.notaP2,
+      notaP3: notaP3Norm !== undefined ? notaP3Norm : registro.notaP3,
+      notaP4: notaP4Norm !== undefined ? notaP4Norm : registro.notaP4,
       notaDefinitiva: definitiva,
       observacion:
         dto.observacion !== undefined
