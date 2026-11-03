@@ -49,7 +49,7 @@
       class="sub-tab"
       [class.active]="vistaActiva === 'DIRECCION_GRUPO'"
       (click)="vistaActiva = 'DIRECCION_GRUPO'">
-      <span class="material-icons">Groups</span>
+      <span class="material-icons">groups</span>
       <span>3. Mi Salón (Directora de Grupo) ({{ cursosDirigidos.length }})</span>
     </button>
   </div>
@@ -76,7 +76,7 @@
             <div class="input-box">
               <select formControlName="cursoId">
                 <option *ngFor="let c of cursos" [value]="c.id">
-                  {{ c.nombre }} - Grupo {{ c.grupo }} ({{ c.aula || 'Salón Principal' }})
+                  {{ c.nombre }} - Grupo {{ c.grupo }} ({{ c.nivel === 'PREESCOLAR' ? '7:30 AM - 12:00 PM' : '7:00 AM - 1:00 PM' }})
                 </option>
               </select>
             </div>
@@ -140,7 +140,20 @@
           <span class="material-icons head-icon emerald">schedule</span>
           <div>
             <h2>Programar Horario de la Semana</h2>
-            <p>Asigna día y bloque horario a cada materia que enseñas.</p>
+            <p>Las franjas horarias se ajustan automáticamente según el grado.</p>
+          </div>
+        </div>
+
+        <!-- Aviso dinámico de jornada según si es Transición/Preescolar o Salones Superiores -->
+        <div class="schedule-rule-banner" [class.preescolar]="esAsignacionPreescolar">
+          <span class="material-icons">info</span>
+          <div *ngIf="esAsignacionPreescolar">
+            <strong>Jornada Transición / Preescolar: 7:30 AM a 12:00 PM</strong>
+            <span>Incluye 30 minutos de descanso de 09:30 AM a 10:00 AM.</span>
+          </div>
+          <div *ngIf="!esAsignacionPreescolar">
+            <strong>Jornada Salones Superiores (1° a 5°): 7:00 AM a 1:00 PM</strong>
+            <span>Incluye 30 minutos de descanso de 10:00 AM a 10:30 AM.</span>
           </div>
         </div>
 
@@ -148,9 +161,9 @@
           <div class="field">
             <label>Materia y Salón <span class="req">*</span></label>
             <div class="input-box">
-              <select formControlName="asignacionId">
+              <select formControlName="asignacionId" (change)="onCambioAsignacionHorario()">
                 <option *ngFor="let a of docenteActivo?.asignaciones" [value]="a.id">
-                  {{ a.materia?.nombre }} — {{ a.curso?.nombre }} ({{ a.curso?.codigo }})
+                  {{ a.materia?.nombre }} — {{ a.curso?.nombre }} ({{ a.curso?.nivel }})
                 </option>
               </select>
             </div>
@@ -172,7 +185,7 @@
               <label>Franja Horaria <span class="req">*</span></label>
               <div class="input-box">
                 <select formControlName="bloqueIndice">
-                  <option *ngFor="let b of bloquesHora; let idx = index" [value]="idx">
+                  <option *ngFor="let b of bloquesHoraDisponibles; let idx = index" [value]="idx">
                     {{ b.etiqueta }}
                   </option>
                 </select>
@@ -183,7 +196,7 @@
           <div class="field">
             <label>Salón / Aula (Opcional)</label>
             <div class="input-box">
-              <input type="text" formControlName="aula" placeholder="Ej. Salón 101 - Preescolar" />
+              <input type="text" formControlName="aula" placeholder="Ej. Salón 102 - Transición" />
             </div>
           </div>
 
@@ -204,7 +217,10 @@
         <span class="material-icons head-icon sky">view_week</span>
         <div>
           <h2>Mi Horario de Clases de la Semana (Lunes a Viernes)</h2>
-          <p>Distribución semanal de todas las materias que enseñas por salón y hora.</p>
+          <p>
+            Transición/Preescolar: <strong>7:30 AM - 12:00 PM</strong> (Descanso 9:30 - 10:00 AM) ·
+            Salones Superiores (1° a 5°): <strong>7:00 AM - 1:00 PM</strong> (Descanso 10:00 - 10:30 AM)
+          </p>
         </div>
       </div>
 
@@ -213,7 +229,36 @@
           <div class="day-header">{{ dia.nombre }}</div>
 
           <div class="day-slots">
-            <div *ngFor="let h of horariosPorDia(dia.codigo)" class="slot-card">
+            <!-- Clases antes del descanso -->
+            <div *ngFor="let h of horariosAntesDescanso(dia.codigo)" class="slot-card">
+              <div class="slot-time">
+                <span>{{ h.horaInicio }} - {{ h.horaFin }}</span>
+                <button
+                  type="button"
+                  class="slot-del"
+                  title="Eliminar bloque"
+                  (click)="eliminarBloqueHorario(h.id)">
+                  ×
+                </button>
+              </div>
+              <div class="slot-subject">{{ h.materia?.nombre }}</div>
+              <div class="slot-course">
+                <span class="material-icons">meeting_room</span>
+                <span>{{ h.curso?.nombre }} · {{ h.aula }}</span>
+              </div>
+            </div>
+
+            <!-- Franja fija de Descanso (30 minutos) -->
+            <div class="recess-slot">
+              <span class="material-icons">free_breakfast</span>
+              <div>
+                <strong>Descanso (30 min)</strong>
+                <small>{{ esAsignacionPreescolar ? '09:30 - 10:00 AM (Transición)' : '10:00 - 10:30 AM (Primaria)' }}</small>
+              </div>
+            </div>
+
+            <!-- Clases después del descanso -->
+            <div *ngFor="let h of horariosDespuesDescanso(dia.codigo)" class="slot-card">
               <div class="slot-time">
                 <span>{{ h.horaInicio }} - {{ h.horaFin }}</span>
                 <button
@@ -232,7 +277,7 @@
             </div>
 
             <div *ngIf="horariosPorDia(dia.codigo).length === 0" class="empty-day">
-              Sin clases programadas
+              Sin clases adicionales este día
             </div>
           </div>
         </div>
@@ -412,4 +457,3 @@
     </ng-template>
   </section>
 </div>
-

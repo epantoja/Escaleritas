@@ -23,19 +23,14 @@ export class LoginComponent implements OnInit {
 
   readonly rolesDisponibles: { codigo: RolCodigo; etiqueta: string; descripcion: string }[] = [
     {
-      codigo: 'ADMIN',
-      etiqueta: 'Administrador',
-      descripcion: 'Dirección general, admisiones, matrículas y seguridad',
-    },
-    {
-      codigo: 'DOCENTE',
-      etiqueta: 'Docente',
-      descripcion: 'Gestión académica y calificaciones (Jardín a 5° Primaria)',
-    },
-    {
       codigo: 'PADRE_ESTUDIANTE',
       etiqueta: 'Padre / Estudiante',
-      descripcion: 'Consulta de boletines, asistencia y pensiones',
+      descripcion: 'Consulta de materias, boletines de notas y horario escolar',
+    },
+    {
+      codigo: 'ADMIN',
+      etiqueta: 'Administrador',
+      descripcion: 'Dirección general, admisiones, matrículas, docentes y seguridad',
     },
   ];
 

@@ -74,6 +74,28 @@ export class PortalEstudianteComponent implements OnInit {
       .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
   }
 
+  get esCursoPreescolar(): boolean {
+    if (!this.curso) {
+      return false;
+    }
+    const cod = (this.curso.codigo || '').toUpperCase();
+    return (
+      this.curso.nivel === 'PREESCOLAR' ||
+      cod.includes('TRANS') ||
+      cod.includes('JAR')
+    );
+  }
+
+  horariosAntesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
+    const horaCorte = this.esCursoPreescolar ? '09:30' : '10:00';
+    return this.horariosPorDia(dia).filter((h) => h.horaFin <= horaCorte);
+  }
+
+  horariosDespuesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
+    const horaCorte = this.esCursoPreescolar ? '09:30' : '10:00';
+    return this.horariosPorDia(dia).filter((h) => h.horaFin > horaCorte);
+  }
+
   nivelDesempeno(nota: number | null): { etiqueta: string; clase: string } {
     if (nota === null || nota === undefined) {
       return { etiqueta: 'En curso', clase: 'perf-pending' };

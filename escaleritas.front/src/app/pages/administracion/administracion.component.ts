@@ -47,6 +47,7 @@ export class AdministracionComponent implements OnInit {
 
   mostrarModalDocente = false;
   docenteEditandoId: string | null = null;
+  ocultarClaveDocente = true;
   docenteForm!: FormGroup;
 
   mostrarModalAsignacion = false;
@@ -101,6 +102,11 @@ export class AdministracionComponent implements OnInit {
       especialidad: ['', [Validators.required, Validators.minLength(3)]],
       tituloAcademico: [''],
       fechaIngreso: [new Date().toISOString().slice(0, 10)],
+      codUsuario: [
+        '',
+        [Validators.minLength(3), Validators.maxLength(30), Validators.pattern(/^[a-zA-Z0-9._-]+$/)],
+      ],
+      clave: ['', [Validators.required, Validators.minLength(6)]],
     });
 
     this.asignacionForm = this.fb.group({
@@ -274,15 +280,31 @@ export class AdministracionComponent implements OnInit {
 
   abrirModalNuevoDocente(): void {
     this.docenteEditandoId = null;
+    this.ocultarClaveDocente = true;
+    const claveCtrl = this.docenteForm.get('clave');
+    claveCtrl?.setValidators([Validators.required, Validators.minLength(6)]);
+    claveCtrl?.updateValueAndValidity();
+
     this.docenteForm.reset({
       tipoDocumento: 'CC',
       fechaIngreso: new Date().toISOString().slice(0, 10),
+      codUsuario: '',
+      clave: '',
     });
     this.mostrarModalDocente = true;
   }
 
   abrirModalEditarDocente(doc: DocenteModel): void {
     this.docenteEditandoId = doc.id;
+    this.ocultarClaveDocente = true;
+    const claveCtrl = this.docenteForm.get('clave');
+    claveCtrl?.setValidators([Validators.minLength(6)]);
+    claveCtrl?.updateValueAndValidity();
+
+    const sugeridoUsuario =
+      doc.usuario?.codUsuario ||
+      (doc.email ? doc.email.split('@')[0].toLowerCase() : '');
+
     this.docenteForm.patchValue({
       nombres: doc.nombres,
       apellidos: doc.apellidos,
@@ -293,8 +315,25 @@ export class AdministracionComponent implements OnInit {
       especialidad: doc.especialidad,
       tituloAcademico: doc.tituloAcademico || '',
       fechaIngreso: doc.fechaIngreso || '',
+      codUsuario: sugeridoUsuario,
+      clave: '',
     });
     this.mostrarModalDocente = true;
+  }
+
+  autocompletarUsuarioDocenteDesdeEmail(): void {
+    const emailVal: string = this.docenteForm.get('email')?.value || '';
+    const codUsuarioCtrl = this.docenteForm.get('codUsuario');
+    if (emailVal.includes('@') && (!codUsuarioCtrl?.value || !codUsuarioCtrl.dirty)) {
+      const prefijo = emailVal
+        .split('@')[0]
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '');
+      if (prefijo.length >= 3) {
+        codUsuarioCtrl?.setValue(prefijo);
+      }
+    }
   }
 
   guardarDocente(): void {

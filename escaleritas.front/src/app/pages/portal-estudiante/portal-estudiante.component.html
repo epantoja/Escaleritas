@@ -181,7 +181,12 @@
       <div class="card-title-row">
         <div>
           <h2>Horario de Clases de la Semana — {{ curso.nombre }} (Grupo {{ curso.grupo }})</h2>
-          <p>Consulta a qué hora se dicta cada materia, en qué salón y con qué profesora.</p>
+          <p *ngIf="esCursoPreescolar">
+            Jornada Transición / Preescolar: <strong>7:30 AM a 12:00 PM</strong> · Descanso de 30 minutos (<strong>09:30 AM - 10:00 AM</strong>).
+          </p>
+          <p *ngIf="!esCursoPreescolar">
+            Jornada Salones Superiores (Primaria): <strong>7:00 AM a 1:00 PM</strong> · Descanso de 30 minutos (<strong>10:00 AM - 10:30 AM</strong>).
+          </p>
         </div>
       </div>
 
@@ -189,7 +194,30 @@
         <div *ngFor="let dia of diasSemana" class="day-col">
           <div class="day-head">{{ dia.nombre }}</div>
           <div class="day-body">
-            <div *ngFor="let h of horariosPorDia(dia.codigo)" class="schedule-item">
+            <!-- Bloques antes del descanso -->
+            <div *ngFor="let h of horariosAntesDescanso(dia.codigo)" class="schedule-item">
+              <div class="sch-time">{{ h.horaInicio }} - {{ h.horaFin }}</div>
+              <div class="sch-subject">{{ h.materia?.nombre }}</div>
+              <div class="sch-teacher">
+                Prof. {{ h.docente?.nombres }} {{ h.docente?.apellidos }}
+              </div>
+              <div class="sch-room">
+                <span class="material-icons">place</span>
+                <span>{{ h.aula || curso.aula }}</span>
+              </div>
+            </div>
+
+            <!-- Bloque fijo de Descanso de 30 minutos -->
+            <div class="recess-item">
+              <span class="material-icons">restaurant</span>
+              <div>
+                <strong>Descanso (30 min)</strong>
+                <small>{{ esCursoPreescolar ? '09:30 - 10:00 AM' : '10:00 - 10:30 AM' }}</small>
+              </div>
+            </div>
+
+            <!-- Bloques después del descanso -->
+            <div *ngFor="let h of horariosDespuesDescanso(dia.codigo)" class="schedule-item">
               <div class="sch-time">{{ h.horaInicio }} - {{ h.horaFin }}</div>
               <div class="sch-subject">{{ h.materia?.nombre }}</div>
               <div class="sch-teacher">

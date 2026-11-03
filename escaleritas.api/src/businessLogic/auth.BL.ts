@@ -2,7 +2,7 @@ import { Op, Sequelize } from 'sequelize';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { config } from '../config/config';
-import { Usuario, Rol, RolCodigo, Permiso } from '../models';
+import { Usuario, Rol, RolCodigo, Permiso, Docente } from '../models';
 import { AppError } from '../middlewares/error.middleware';
 import { JwtUserPayload } from '../middlewares/autenticacion';
 
@@ -118,6 +118,10 @@ export const loginUsuarioBL = async (
           Sequelize.fn('UPPER', Sequelize.col('usuario.email')),
           identificador.toUpperCase()
         ),
+        Sequelize.where(
+          Sequelize.fn('UPPER', Sequelize.col('usuario.documento')),
+          identificador.toUpperCase()
+        ),
       ],
     },
     include: [
@@ -157,6 +161,35 @@ export const loginUsuarioBL = async (
     );
   }
 
+  // Si el usuario tiene rol DOCENTE, verificar que corresponda a un Docente activo creado por el Administrador
+  if (usuario.rol?.codigo === RolCodigo.DOCENTE) {
+    const condicionesDocente: any[] = [{ usuarioId: usuario.id }];
+    if (usuario.email) {
+      condicionesDocente.push({ email: usuario.email.trim().toLowerCase() });
+    }
+    if (usuario.documento) {
+      condicionesDocente.push({ documento: usuario.documento.trim() });
+    }
+
+    const perfilDocente = await Docente.findOne({
+      where: {
+        estado: 1,
+        [Op.or]: condicionesDocente,
+      },
+    });
+
+    if (!perfilDocente) {
+      throw new AppError(
+        'Esta cuenta no corresponde a un docente activo registrado por el Administrador en el menú de Docentes',
+        403
+      );
+    }
+
+    if (perfilDocente.usuarioId !== usuario.id) {
+      await perfilDocente.update({ usuarioId: usuario.id });
+    }
+  }
+
   return construirRespuestaAuth(usuario, 'Inicio de sesión exitoso');
 };
 
@@ -188,6 +221,15 @@ export const registrarUsuarioBL = async (
     throw new AppError(
       'La contraseña debe tener al menos 6 caracteres por seguridad',
       422
+    );
+  }
+
+  // Bloquear el registro inicial público con rol DOCENTE:
+  // Los docentes solo pueden ser creados por el Administrador desde el menú de Docentes
+  if ((rolCodigo || '').trim().toUpperCase() === RolCodigo.DOCENTE) {
+    throw new AppError(
+      'El registro de usuarios con rol Docente debe realizarse exclusivamente desde el rol Administrador en el módulo de Docentes',
+      403
     );
   }
 

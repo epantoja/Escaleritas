@@ -97,7 +97,7 @@
         <!-- Campo Usuario / Correo -->
         <div class="field-group">
           <label for="login-usuario" class="field-label">
-            Código de Usuario o Correo Electrónico <span class="req">*</span>
+            Usuario, Correo Institucional o Documento <span class="req">*</span>
           </label>
           <div
             class="input-box"
@@ -107,7 +107,7 @@
               id="login-usuario"
               type="text"
               formControlName="usuario"
-              placeholder="Ej. lgomez o correo@escaleritas.edu.co"
+              placeholder="Ej. docente@escalerita.com, usuario o documento"
               autocomplete="username" />
           </div>
           <span class="error-msg" *ngIf="tieneError(loginForm, 'usuario', 'required')">
@@ -181,7 +181,7 @@
 
         <div class="form-header">
           <h2>Crear Cuenta Institucional</h2>
-          <p>Completa los datos para registrar un usuario y asignarle su perfil en el colegio.</p>
+          <p>Registro inicial para Padres de Familia / Estudiantes o Administradores. Las cuentas de Docentes se crean desde el menú de Docentes del Administrador.</p>
         </div>
 
         <!-- Fila 1: Nombres y Apellidos -->

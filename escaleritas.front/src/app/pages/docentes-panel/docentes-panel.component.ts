@@ -15,6 +15,12 @@ import {
 import { InfoUsuarioModel } from '../../components/models/infoUsuario.model';
 import { SnackBarAnnotatedComponent } from '../../components/snack-bar-annotated/snack-bar-annotated.component';
 
+export interface BloqueHorarioConfig {
+  inicio: string;
+  fin: string;
+  etiqueta: string;
+}
+
 @Component({
   selector: 'app-docentes-panel',
   templateUrl: './docentes-panel.component.html',
@@ -24,7 +30,6 @@ export class DocentesPanelComponent implements OnInit {
   usuario: InfoUsuarioModel | null = null;
   esAdmin = false;
 
-  // Si es Admin puede elegir cualquier docente; si es Docente carga su propio perfil
   docentesDisponibles: DocenteModel[] = [];
   docenteActivo: DocenteModel | null = null;
   cursosDirigidos: CursoModel[] = [];
@@ -33,11 +38,9 @@ export class DocentesPanelComponent implements OnInit {
   materias: MateriaModel[] = [];
   horariosDocente: HorarioClaseModel[] = [];
 
-  // Planilla de notas de la materia seleccionada
   asignacionCalificando: AsignacionDocenteModel | null = null;
   planillaNotas: CalificacionPlanillaItemModel[] = [];
 
-  // Pestaña activa: 'MATERIAS_HORARIO' | 'CALIFICACIONES' | 'DIRECCION_GRUPO'
   vistaActiva: 'MATERIAS_HORARIO' | 'CALIFICACIONES' | 'DIRECCION_GRUPO' =
     'MATERIAS_HORARIO';
 
@@ -53,13 +56,30 @@ export class DocentesPanelComponent implements OnInit {
     { codigo: 'VIERNES', nombre: 'Viernes' },
   ];
 
-  readonly bloquesHora: { inicio: string; fin: string; etiqueta: string }[] = [
-    { inicio: '07:00', fin: '08:00', etiqueta: '07:00 AM - 08:00 AM' },
-    { inicio: '08:00', fin: '09:00', etiqueta: '08:00 AM - 09:00 AM' },
-    { inicio: '09:00', fin: '10:00', etiqueta: '09:00 AM - 10:00 AM' },
-    { inicio: '10:30', fin: '11:30', etiqueta: '10:30 AM - 11:30 AM' },
-    { inicio: '11:30', fin: '12:30', etiqueta: '11:30 AM - 12:30 PM' },
-    { inicio: '12:30', fin: '13:30', etiqueta: '12:30 PM - 01:30 PM' },
+  /**
+   * Transición / Preescolar:
+   * Jornada de 07:30 AM a 12:00 PM con 30 minutos de descanso (09:30 AM - 10:00 AM)
+   */
+  readonly bloquesTransicionPreescolar: BloqueHorarioConfig[] = [
+    { inicio: '07:30', fin: '08:30', etiqueta: '07:30 AM - 08:30 AM (1° Bloque)' },
+    { inicio: '08:30', fin: '09:30', etiqueta: '08:30 AM - 09:30 AM (2° Bloque)' },
+    // Descanso de 30 minutos: 09:30 AM - 10:00 AM
+    { inicio: '10:00', fin: '11:00', etiqueta: '10:00 AM - 11:00 AM (3° Bloque - Post Descanso)' },
+    { inicio: '11:00', fin: '12:00', etiqueta: '11:00 AM - 12:00 PM (4° Bloque - Cierre)' },
+  ];
+
+  /**
+   * Salones Superiores (1° a 5° de Primaria):
+   * Jornada de 07:00 AM a 01:00 PM (13:00) con 30 minutos de descanso (10:00 AM - 10:30 AM)
+   */
+  readonly bloquesPrimariaSuperiores: BloqueHorarioConfig[] = [
+    { inicio: '07:00', fin: '08:00', etiqueta: '07:00 AM - 08:00 AM (1° Hora)' },
+    { inicio: '08:00', fin: '09:00', etiqueta: '08:00 AM - 09:00 AM (2° Hora)' },
+    { inicio: '09:00', fin: '10:00', etiqueta: '09:00 AM - 10:00 AM (3° Hora)' },
+    // Descanso de 30 minutos: 10:00 AM - 10:30 AM
+    { inicio: '10:30', fin: '11:20', etiqueta: '10:30 AM - 11:20 AM (4° Hora - Post Descanso)' },
+    { inicio: '11:20', fin: '12:10', etiqueta: '11:20 AM - 12:10 PM (5° Hora)' },
+    { inicio: '12:10', fin: '13:00', etiqueta: '12:10 PM - 01:00 PM (6° Hora - Cierre)' },
   ];
 
   constructor(
@@ -91,6 +111,47 @@ export class DocentesPanelComponent implements OnInit {
       diaSemana: ['LUNES', [Validators.required]],
       bloqueIndice: [0, [Validators.required]],
       aula: [''],
+    });
+  }
+
+  /**
+   * Retorna la asignación actualmente seleccionada en el formulario de horario
+   */
+  get asignacionHorarioSeleccionada(): AsignacionDocenteModel | undefined {
+    const id = this.horarioForm?.get('asignacionId')?.value;
+    return (this.docenteActivo?.asignaciones || []).find((a) => a.id === id);
+  }
+
+  /**
+   * Determina si el salón seleccionado en el formulario de horario es Transición/Preescolar
+   */
+  get esAsignacionPreescolar(): boolean {
+    const curso = this.asignacionHorarioSeleccionada?.curso;
+    if (!curso) {
+      return false;
+    }
+    return (
+      curso.nivel === 'PREESCOLAR' ||
+      curso.grado === 'TRANSICION' ||
+      curso.grado === 'JARDIN'
+    );
+  }
+
+  /**
+   * Devuelve los bloques horarios según si el salón seleccionado es Transición/Preescolar (7:30-12:00)
+   * o Salones Superiores de Primaria (7:00-13:00)
+   */
+  get bloquesHoraDisponibles(): BloqueHorarioConfig[] {
+    return this.esAsignacionPreescolar
+      ? this.bloquesTransicionPreescolar
+      : this.bloquesPrimariaSuperiores;
+  }
+
+  onCambioAsignacionHorario(): void {
+    const asig = this.asignacionHorarioSeleccionada;
+    this.horarioForm.patchValue({
+      bloqueIndice: 0,
+      aula: asig?.curso?.aula || '',
     });
   }
 
@@ -169,6 +230,7 @@ export class DocentesPanelComponent implements OnInit {
     if (asignaciones.length > 0) {
       this.horarioForm.patchValue({
         asignacionId: asignaciones[0].id,
+        bloqueIndice: 0,
         aula: asignaciones[0].curso?.aula || '',
       });
       if (!this.asignacionCalificando) {
@@ -245,7 +307,8 @@ export class DocentesPanelComponent implements OnInit {
 
     const { asignacionId, diaSemana, bloqueIndice, aula } =
       this.horarioForm.value;
-    const bloque = this.bloquesHora[Number(bloqueIndice)] || this.bloquesHora[0];
+    const bloques = this.bloquesHoraDisponibles;
+    const bloque = bloques[Number(bloqueIndice)] || bloques[0];
 
     this.guardando = true;
     this.academicoService
@@ -275,6 +338,20 @@ export class DocentesPanelComponent implements OnInit {
         this.cargarHorariosDocente();
       },
     });
+  }
+
+  horariosAntesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
+    const limiteDescanso = this.esAsignacionPreescolar ? '09:30' : '10:00';
+    return this.horariosDocente
+      .filter((h) => h.diaSemana === dia && h.horaInicio < limiteDescanso)
+      .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+  }
+
+  horariosDespuesDescanso(dia: DiaSemanaTipo): HorarioClaseModel[] {
+    const limiteDescanso = this.esAsignacionPreescolar ? '09:30' : '10:00';
+    return this.horariosDocente
+      .filter((h) => h.diaSemana === dia && h.horaInicio >= limiteDescanso)
+      .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
   }
 
   horariosPorDia(dia: DiaSemanaTipo): HorarioClaseModel[] {
@@ -331,4 +408,3 @@ export class DocentesPanelComponent implements OnInit {
     });
   }
 }
-

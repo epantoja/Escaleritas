@@ -270,7 +270,7 @@ export const postDocenteController = async (
     const docente = await crearDocenteBL(req.body);
     res.status(201).json({
       ok: true,
-      mensaje: 'Docente registrado exitosamente',
+      mensaje: 'Docente y cuenta de acceso a la plataforma creados exitosamente',
       docente,
     });
   } catch (error) {
@@ -287,7 +287,7 @@ export const putDocenteController = async (
     const docente = await actualizarDocenteBL(req.params.id, req.body);
     res.status(200).json({
       ok: true,
-      mensaje: 'Datos del docente actualizados correctamente',
+      mensaje: 'Datos y credenciales del docente actualizados correctamente',
       docente,
     });
   } catch (error) {

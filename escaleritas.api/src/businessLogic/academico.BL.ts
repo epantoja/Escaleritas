@@ -1,4 +1,6 @@
-import { Op } from 'sequelize';
+import { Op, Sequelize, Transaction } from 'sequelize';
+import bcrypt from 'bcrypt';
+import { config } from '../config/config';
 import {
   sequelize,
   Curso,
@@ -9,6 +11,8 @@ import {
   HorarioClase,
   Calificacion,
   Usuario,
+  Rol,
+  RolCodigo,
 } from '../models';
 import { AppError } from '../middlewares/error.middleware';
 import { JwtUserPayload } from '../middlewares/autenticacion';
@@ -68,6 +72,8 @@ export interface CrearDocenteDTO {
   especialidad: string;
   tituloAcademico?: string | null;
   fechaIngreso?: string | null;
+  codUsuario?: string;
+  clave?: string;
   usuarioId?: string | null;
   asignaciones?: AsignacionInputDTO[];
 }
@@ -504,6 +510,17 @@ export const eliminarEstudianteBL = async (id: string) => {
 // ============================================================================
 
 export const listarDocentesBL = async (filtros: FiltroDocentesDTO) => {
+  // Desactivar perfiles docentes autogenerados anteriormente desde el registro público (documento 'DOC-...')
+  await Docente.update(
+    { estado: 0 },
+    {
+      where: {
+        estado: 1,
+        documento: { [Op.like]: 'DOC-%' },
+      },
+    }
+  );
+
   const whereClause: any = { estado: 1 };
 
   if (filtros.especialidad?.trim()) {
@@ -530,6 +547,12 @@ export const listarDocentesBL = async (filtros: FiltroDocentesDTO) => {
   return Docente.findAll({
     where: whereClause,
     include: [
+      {
+        model: Usuario,
+        as: 'usuario',
+        attributes: ['id', 'codUsuario', 'email', 'estado'],
+        required: false,
+      },
       {
         model: DocenteCursoMateria,
         as: 'asignaciones',
@@ -566,6 +589,12 @@ export const obtenerDocentePorIdBL = async (id: string) => {
   const docente = await Docente.findByPk(id, {
     include: [
       {
+        model: Usuario,
+        as: 'usuario',
+        attributes: ['id', 'codUsuario', 'email', 'estado'],
+        required: false,
+      },
+      {
         model: DocenteCursoMateria,
         as: 'asignaciones',
         where: { estado: 1 },
@@ -599,41 +628,107 @@ export const obtenerDocentePorIdBL = async (id: string) => {
   return docente;
 };
 
+const obtenerRolDocente = async (transaction?: Transaction): Promise<Rol> => {
+  let rolDocente = await Rol.findOne({
+    where: { codigo: RolCodigo.DOCENTE },
+    transaction,
+  });
+
+  if (!rolDocente) {
+    rolDocente = await Rol.create(
+      {
+        codigo: RolCodigo.DOCENTE,
+        nombre: 'Docente',
+        descripcion: 'Gestión académica, horario y calificaciones (Jardín a 5° Primaria)',
+        estado: 1,
+      },
+      { transaction }
+    );
+  }
+
+  return rolDocente;
+};
+
+const resolverCodUsuarioDocente = async (
+  codUsuarioInput: string | undefined,
+  email: string,
+  documento: string,
+  ignorarUsuarioId?: string | null,
+  transaction?: Transaction
+): Promise<string> => {
+  const basePrefijo = (
+    codUsuarioInput?.trim() ||
+    email.split('@')[0] ||
+    `doc.${documento.trim()}`
+  )
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, '');
+
+  const candidatoBase = basePrefijo.length >= 3 ? basePrefijo.slice(0, 26) : `doc.${documento.trim()}`;
+
+  const existeCandidato = async (codigo: string) => {
+    const whereCond: any = {
+      [Op.and]: [
+        Sequelize.where(
+          Sequelize.fn('UPPER', Sequelize.col('codUsuario')),
+          codigo.toUpperCase()
+        ),
+      ],
+    };
+    if (ignorarUsuarioId) {
+      whereCond.id = { [Op.ne]: ignorarUsuarioId };
+    }
+    const encontrado = await Usuario.findOne({ where: whereCond, transaction });
+    return Boolean(encontrado);
+  };
+
+  if (!(await existeCandidato(candidatoBase))) {
+    return candidatoBase;
+  }
+
+  if (codUsuarioInput?.trim()) {
+    throw new AppError(
+      `El código de usuario "${codUsuarioInput.trim()}" ya está asignado a otra cuenta en la plataforma`,
+      409
+    );
+  }
+
+  const sufijoDoc = documento.trim().slice(-3) || Math.floor(10 + Math.random() * 89).toString();
+  return `${candidatoBase}.${sufijoDoc}`;
+};
+
 /**
- * Obtiene (o inicializa automáticamente) el perfil Docente del usuario autenticado
+ * Obtiene el perfil Docente del usuario autenticado (creado por el Administrador)
  */
 export const obtenerMiPerfilDocenteBL = async (userPayload: JwtUserPayload) => {
-  let docente = await Docente.findOne({
+  const usuarioDb = await Usuario.findByPk(userPayload.user_id);
+
+  const condicionesBusqueda: any[] = [{ usuarioId: userPayload.user_id }];
+  if (userPayload.email) {
+    condicionesBusqueda.push({ email: userPayload.email.trim().toLowerCase() });
+  }
+  if (usuarioDb?.email) {
+    condicionesBusqueda.push({ email: usuarioDb.email.trim().toLowerCase() });
+  }
+  if (usuarioDb?.documento) {
+    condicionesBusqueda.push({ documento: usuarioDb.documento.trim() });
+  }
+
+  const docente = await Docente.findOne({
     where: {
-      [Op.or]: [
-        { usuarioId: userPayload.user_id },
-        ...(userPayload.email ? [{ email: userPayload.email.toLowerCase() }] : []),
-      ],
+      estado: 1,
+      [Op.or]: condicionesBusqueda,
     },
   });
 
   if (!docente) {
-    const usuarioDb = await Usuario.findByPk(userPayload.user_id);
-    const anio = new Date().getFullYear();
-    const sufijo = Math.floor(100 + Math.random() * 900);
+    throw new AppError(
+      'Tu usuario no tiene un perfil activo en la Planta Docente. Solicita al Administrador tu registro desde el menú de Docentes.',
+      403
+    );
+  }
 
-    docente = await Docente.create({
-      codigoDocente: `DOC-${anio}-${sufijo}`,
-      nombres: usuarioDb?.nombres || userPayload.nombre || 'Docente',
-      apellidos: usuarioDb?.apellidos || userPayload.apellido || 'Institucional',
-      tipoDocumento: 'CC',
-      documento: usuarioDb?.documento || `DOC-${sufijo}-${Date.now().toString().slice(-4)}`,
-      email:
-        usuarioDb?.email ||
-        userPayload.email ||
-        `${userPayload.usuario.toLowerCase()}@escaleritas.edu.co`,
-      especialidad: 'Docente de Planta',
-      tituloAcademico: 'Licenciado(a) en Educación',
-      fechaIngreso: new Date().toISOString().slice(0, 10),
-      usuarioId: userPayload.user_id,
-      estado: 1,
-    });
-  } else if (!docente.usuarioId) {
+  if (docente.usuarioId !== userPayload.user_id) {
     await docente.update({ usuarioId: userPayload.user_id });
   }
 
@@ -657,11 +752,21 @@ export const obtenerMiPerfilDocenteBL = async (userPayload: JwtUserPayload) => {
 };
 
 export const crearDocenteBL = async (dto: CrearDocenteDTO) => {
+  if (!dto.clave || dto.clave.trim().length < 6) {
+    throw new AppError(
+      'Debe asignar una contraseña de al menos 6 caracteres para que el docente ingrese a la plataforma',
+      422
+    );
+  }
+
+  const emailNormalizado = dto.email.trim().toLowerCase();
+  const documentoNormalizado = dto.documento.trim();
+
   const existente = await Docente.findOne({
     where: {
       [Op.or]: [
-        { documento: dto.documento.trim() },
-        { email: dto.email.trim().toLowerCase() },
+        { documento: documentoNormalizado },
+        { email: emailNormalizado },
       ],
     },
   });
@@ -680,19 +785,75 @@ export const crearDocenteBL = async (dto: CrearDocenteDTO) => {
 
   const transaccion = await sequelize.transaction();
   try {
+    const rolDocente = await obtenerRolDocente(transaccion);
+    const salt = await bcrypt.genSalt(config.bcryptSaltRounds);
+    const claveHash = await bcrypt.hash(dto.clave.trim(), salt);
+
+    // Verificar si ya existe un usuario en public.usuario con el mismo correo o documento
+    let usuarioDocente = await Usuario.findOne({
+      where: {
+        [Op.or]: [
+          Sequelize.where(
+            Sequelize.fn('UPPER', Sequelize.col('email')),
+            emailNormalizado.toUpperCase()
+          ),
+          { documento: documentoNormalizado },
+        ],
+      },
+      transaction: transaccion,
+    });
+
+    const codUsuarioFinal = await resolverCodUsuarioDocente(
+      dto.codUsuario,
+      emailNormalizado,
+      documentoNormalizado,
+      usuarioDocente?.id,
+      transaccion
+    );
+
+    if (usuarioDocente) {
+      await usuarioDocente.update(
+        {
+          nombres: dto.nombres.trim(),
+          apellidos: dto.apellidos.trim(),
+          codUsuario: codUsuarioFinal,
+          email: emailNormalizado,
+          documento: documentoNormalizado,
+          clave: claveHash,
+          rolId: rolDocente.id,
+          estado: 1,
+        },
+        { transaction: transaccion }
+      );
+    } else {
+      usuarioDocente = await Usuario.create(
+        {
+          nombres: dto.nombres.trim(),
+          apellidos: dto.apellidos.trim(),
+          codUsuario: codUsuarioFinal,
+          email: emailNormalizado,
+          documento: documentoNormalizado,
+          clave: claveHash,
+          rolId: rolDocente.id,
+          estado: 1,
+        },
+        { transaction: transaccion }
+      );
+    }
+
     const nuevoDocente = await Docente.create(
       {
         codigoDocente: codigoGenerado,
         nombres: dto.nombres.trim(),
         apellidos: dto.apellidos.trim(),
         tipoDocumento: dto.tipoDocumento || 'CC',
-        documento: dto.documento.trim(),
-        email: dto.email.trim().toLowerCase(),
+        documento: documentoNormalizado,
+        email: emailNormalizado,
         telefono: dto.telefono?.trim() || null,
         especialidad: dto.especialidad.trim(),
         tituloAcademico: dto.tituloAcademico?.trim() || null,
         fechaIngreso: dto.fechaIngreso || new Date().toISOString().slice(0, 10),
-        usuarioId: dto.usuarioId || null,
+        usuarioId: usuarioDocente.id,
         estado: 1,
       },
       { transaction: transaccion }
@@ -739,28 +900,126 @@ export const actualizarDocenteBL = async (
     throw new AppError('Docente no encontrado', 404);
   }
 
-  await docente.update({
-    nombres: dto.nombres?.trim() ?? docente.nombres,
-    apellidos: dto.apellidos?.trim() ?? docente.apellidos,
-    tipoDocumento: dto.tipoDocumento ?? docente.tipoDocumento,
-    documento: dto.documento?.trim() ?? docente.documento,
-    email: dto.email?.trim().toLowerCase() ?? docente.email,
-    telefono:
-      dto.telefono !== undefined
-        ? dto.telefono?.trim() || null
-        : docente.telefono,
-    especialidad: dto.especialidad?.trim() ?? docente.especialidad,
-    tituloAcademico:
-      dto.tituloAcademico !== undefined
-        ? dto.tituloAcademico?.trim() || null
-        : docente.tituloAcademico,
-    fechaIngreso:
-      dto.fechaIngreso !== undefined
-        ? dto.fechaIngreso || null
-        : docente.fechaIngreso,
-  });
+  if (dto.clave !== undefined && dto.clave.trim() !== '' && dto.clave.trim().length < 6) {
+    throw new AppError(
+      'La nueva contraseña del docente debe tener al menos 6 caracteres',
+      422
+    );
+  }
 
-  return obtenerDocentePorIdBL(docente.id);
+  const transaccion = await sequelize.transaction();
+  try {
+    const nombresFinal = dto.nombres?.trim() ?? docente.nombres;
+    const apellidosFinal = dto.apellidos?.trim() ?? docente.apellidos;
+    const documentoFinal = dto.documento?.trim() ?? docente.documento;
+    const emailFinal = dto.email?.trim().toLowerCase() ?? docente.email;
+
+    const rolDocente = await obtenerRolDocente(transaccion);
+
+    let usuarioDocente: Usuario | null = null;
+    if (docente.usuarioId) {
+      usuarioDocente = await Usuario.findByPk(docente.usuarioId, {
+        transaction: transaccion,
+      });
+    }
+
+    if (!usuarioDocente) {
+      usuarioDocente = await Usuario.findOne({
+        where: {
+          [Op.or]: [
+            Sequelize.where(
+              Sequelize.fn('UPPER', Sequelize.col('email')),
+              emailFinal.toUpperCase()
+            ),
+            { documento: documentoFinal },
+          ],
+        },
+        transaction: transaccion,
+      });
+    }
+
+    const codUsuarioFinal = await resolverCodUsuarioDocente(
+      dto.codUsuario || usuarioDocente?.codUsuario,
+      emailFinal,
+      documentoFinal,
+      usuarioDocente?.id,
+      transaccion
+    );
+
+    if (usuarioDocente) {
+      const camposActualizarUsuario: any = {
+        nombres: nombresFinal,
+        apellidos: apellidosFinal,
+        codUsuario: codUsuarioFinal,
+        email: emailFinal,
+        documento: documentoFinal,
+        rolId: rolDocente.id,
+        estado: 1,
+      };
+
+      if (dto.clave && dto.clave.trim().length >= 6) {
+        const salt = await bcrypt.genSalt(config.bcryptSaltRounds);
+        camposActualizarUsuario.clave = await bcrypt.hash(dto.clave.trim(), salt);
+      }
+
+      await usuarioDocente.update(camposActualizarUsuario, {
+        transaction: transaccion,
+      });
+    } else {
+      // El docente fue creado previamente sin cuenta en public.usuario: formalizar su cuenta ahora
+      const claveInicial =
+        dto.clave && dto.clave.trim().length >= 6
+          ? dto.clave.trim()
+          : documentoFinal;
+      const salt = await bcrypt.genSalt(config.bcryptSaltRounds);
+      const claveHash = await bcrypt.hash(claveInicial, salt);
+
+      usuarioDocente = await Usuario.create(
+        {
+          nombres: nombresFinal,
+          apellidos: apellidosFinal,
+          codUsuario: codUsuarioFinal,
+          email: emailFinal,
+          documento: documentoFinal,
+          clave: claveHash,
+          rolId: rolDocente.id,
+          estado: 1,
+        },
+        { transaction: transaccion }
+      );
+    }
+
+    await docente.update(
+      {
+        nombres: nombresFinal,
+        apellidos: apellidosFinal,
+        tipoDocumento: dto.tipoDocumento ?? docente.tipoDocumento,
+        documento: documentoFinal,
+        email: emailFinal,
+        telefono:
+          dto.telefono !== undefined
+            ? dto.telefono?.trim() || null
+            : docente.telefono,
+        especialidad: dto.especialidad?.trim() ?? docente.especialidad,
+        tituloAcademico:
+          dto.tituloAcademico !== undefined
+            ? dto.tituloAcademico?.trim() || null
+            : docente.tituloAcademico,
+        fechaIngreso:
+          dto.fechaIngreso !== undefined
+            ? dto.fechaIngreso || null
+            : docente.fechaIngreso,
+        usuarioId: usuarioDocente.id,
+      },
+      { transaction: transaccion }
+    );
+
+    await transaccion.commit();
+    return obtenerDocentePorIdBL(docente.id);
+  } catch (error) {
+    await transaccion.rollback();
+    throw error;
+  }
 };
 
 export const eliminarDocenteBL = async (id: string) => {
@@ -777,6 +1036,12 @@ export const eliminarDocenteBL = async (id: string) => {
     { directorDocenteId: null },
     { where: { directorDocenteId: id } }
   );
+  if (docente.usuarioId) {
+    await Usuario.update(
+      { estado: 0 },
+      { where: { id: docente.usuarioId } }
+    );
+  }
   await docente.update({ estado: 0 });
 
   return { id, mensaje: 'Docente desvinculado correctamente del directorio activo' };
@@ -908,19 +1173,77 @@ export const crearHorarioClaseBL = async (dto: CrearHorarioDTO) => {
     throw new AppError('La hora de fin debe ser posterior a la hora de inicio', 422);
   }
 
-  // Verificar que la docente no tenga otro bloque a la misma hora y día
-  const conflictoDocente = await HorarioClase.findOne({
+  const curso = asignacion.curso;
+  const esPreescolar =
+    curso?.nivel === 'PREESCOLAR' ||
+    curso?.grado === 'TRANSICION' ||
+    curso?.grado === 'JARDIN';
+
+  // Reglas de jornada escolar según nivel (Transición/Preescolar vs Salones Superiores)
+  if (esPreescolar) {
+    // Transición / Jardín: 07:30 AM a 12:00 PM con descanso de 09:30 a 10:00 (30 min)
+    if (dto.horaInicio < '07:30' || dto.horaFin > '12:00') {
+      throw new AppError(
+        `El horario para ${curso?.nombre || 'Transición/Preescolar'} es de 07:30 AM a 12:00 PM`,
+        422
+      );
+    }
+    if (dto.horaInicio < '10:00' && dto.horaFin > '09:30') {
+      throw new AppError(
+        'No se puede programar clase durante los 30 minutos de descanso de Preescolar (09:30 AM - 10:00 AM)',
+        422
+      );
+    }
+  } else {
+    // Salones superiores (1° a 5° de Primaria): 07:00 AM a 01:00 PM (13:00) con descanso de 10:00 a 10:30 (30 min)
+    if (dto.horaInicio < '07:00' || dto.horaFin > '13:00') {
+      throw new AppError(
+        `El horario para ${curso?.nombre || 'Primaria'} es de 07:00 AM a 01:00 PM`,
+        422
+      );
+    }
+    if (dto.horaInicio < '10:30' && dto.horaFin > '10:00') {
+      throw new AppError(
+        'No se puede programar clase durante los 30 minutos de descanso de Primaria (10:00 AM - 10:30 AM)',
+        422
+      );
+    }
+  }
+
+  // Verificar que la docente no tenga cruce de horario el mismo día
+  const horariosDocenteDia = await HorarioClase.findAll({
     where: {
       docenteId: asignacion.docenteId,
       diaSemana: dto.diaSemana,
-      horaInicio: dto.horaInicio,
       estado: 1,
     },
   });
 
-  if (conflictoDocente) {
+  const cruceDocente = horariosDocenteDia.find(
+    (h) => dto.horaInicio < h.horaFin && dto.horaFin > h.horaInicio
+  );
+  if (cruceDocente) {
     throw new AppError(
-      `Ya tienes una clase programada el día ${dto.diaSemana} a las ${dto.horaInicio}`,
+      `La docente ya tiene una clase programada el ${dto.diaSemana} de ${cruceDocente.horaInicio} a ${cruceDocente.horaFin}`,
+      409
+    );
+  }
+
+  // Verificar que el salón de clase no tenga otra materia a la misma hora el mismo día
+  const horariosSalonDia = await HorarioClase.findAll({
+    where: {
+      cursoId: asignacion.cursoId,
+      diaSemana: dto.diaSemana,
+      estado: 1,
+    },
+  });
+
+  const cruceSalon = horariosSalonDia.find(
+    (h) => dto.horaInicio < h.horaFin && dto.horaFin > h.horaInicio
+  );
+  if (cruceSalon) {
+    throw new AppError(
+      `El salón ${curso?.nombre || ''} ya tiene una materia asignada el ${dto.diaSemana} de ${cruceSalon.horaInicio} a ${cruceSalon.horaFin}`,
       409
     );
   }

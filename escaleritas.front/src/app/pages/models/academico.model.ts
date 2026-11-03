@@ -100,6 +100,12 @@ export interface DocenteModel {
   fechaIngreso?: string | null;
   usuarioId?: string | null;
   estado: number;
+  usuario?: {
+    id: string;
+    codUsuario: string;
+    email: string;
+    estado: number;
+  } | null;
   asignaciones?: AsignacionDocenteModel[];
 }
 

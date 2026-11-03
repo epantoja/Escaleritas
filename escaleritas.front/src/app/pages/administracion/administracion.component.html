@@ -290,6 +290,7 @@
               <th>Código</th>
               <th>Docente</th>
               <th>Documento y Contacto</th>
+              <th>Acceso Plataforma</th>
               <th>Especialidad / Título</th>
               <th>Carga Académica (Salones y Materias que Enseña)</th>
               <th class="text-right">Acciones</th>
@@ -314,6 +315,25 @@
               <td>
                 <div class="doc-text">{{ doc.tipoDocumento }} {{ doc.documento }}</div>
                 <div class="person-meta">{{ doc.email }} · {{ doc.telefono || 'Sin tel.' }}</div>
+              </td>
+              <td>
+                <div *ngIf="doc.usuario; else sinUsuarioPlataforma">
+                  <span class="status-pill status-active" style="display: inline-flex; align-items: center; gap: 4px;">
+                    <span class="material-icons" style="font-size: 13px;">verified_user</span>
+                    <span>@{{ doc.usuario.codUsuario }}</span>
+                  </span>
+                  <div class="person-meta" style="margin-top: 3px;">Ingresa con usuario, correo o CC</div>
+                </div>
+                <ng-template #sinUsuarioPlataforma>
+                  <button
+                    type="button"
+                    class="btn-assign-inline"
+                    style="background: #fffbeb; color: #b45309; border-color: #fde68a;"
+                    (click)="abrirModalEditarDocente(doc)">
+                    <span class="material-icons" style="font-size: 14px;">key</span>
+                    <span>Asignar Contraseña</span>
+                  </button>
+                </ng-template>
               </td>
               <td>
                 <div class="person-name">{{ doc.especialidad }}</div>
@@ -368,7 +388,7 @@
               </td>
             </tr>
             <tr *ngIf="docentes.length === 0">
-              <td colspan="6" class="empty-row">
+              <td colspan="7" class="empty-row">
                 <span class="material-icons empty-icon">co_present</span>
                 <p>No hay docentes registrados con los filtros actuales.</p>
               </td>
@@ -650,18 +670,19 @@
     <div class="modal-window">
       <div class="modal-header">
         <div>
-          <h3>{{ docenteEditandoId ? 'Editar Información del Docente' : 'Registrar Nuevo Docente' }}</h3>
-          <p>Ingresa los datos profesionales y de contacto del profesor.</p>
+          <h3>{{ docenteEditandoId ? 'Editar Docente y Credenciales de Acceso' : 'Registrar Nuevo Docente y Cuenta de Plataforma' }}</h3>
+          <p>Ingresa los datos profesionales del docente y asígnale su contraseña para ingresar al portal ERP.</p>
         </div>
         <button type="button" class="close-btn" (click)="mostrarModalDocente = false">×</button>
       </div>
 
       <form [formGroup]="docenteForm" (ngSubmit)="guardarDocente()" class="modal-body" novalidate>
+        <div class="section-divider">1. Datos Personales y Profesionales</div>
         <div class="form-grid-2">
           <div class="field-group">
             <label class="field-label">Nombres <span class="req">*</span></label>
             <div class="input-box" [class.input-error]="tieneError(docenteForm, 'nombres', 'required')">
-              <input type="text" formControlName="nombres" placeholder="Ej. Carlos Andrés" />
+              <input type="text" formControlName="nombres" placeholder="Ej. Adriana" />
             </div>
             <span class="error-msg" *ngIf="tieneError(docenteForm, 'nombres', 'required')">
               El nombre es obligatorio.
@@ -706,7 +727,11 @@
           <div class="field-group">
             <label class="field-label">Correo Institucional <span class="req">*</span></label>
             <div class="input-box" [class.input-error]="tieneError(docenteForm, 'email', 'required') || tieneError(docenteForm, 'email', 'email')">
-              <input type="email" formControlName="email" placeholder="docente@escaleritas.edu.co" />
+              <input
+                type="email"
+                formControlName="email"
+                (blur)="autocompletarUsuarioDocenteDesdeEmail()"
+                placeholder="docente@escalerita.com" />
             </div>
             <span class="error-msg" *ngIf="tieneError(docenteForm, 'email', 'required') || tieneError(docenteForm, 'email', 'email')">
               Ingresa un correo electrónico válido.
@@ -740,13 +765,63 @@
           </div>
         </div>
 
+        <div class="section-divider">2. Credenciales de Acceso a la Plataforma (Rol Docente)</div>
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Código de Usuario (Login)</label>
+            <div class="input-box" [class.input-error]="tieneError(docenteForm, 'codUsuario', 'pattern') || tieneError(docenteForm, 'codUsuario', 'minlength')">
+              <input
+                type="text"
+                formControlName="codUsuario"
+                placeholder="Ej. adriana.martinez (o se genera del correo)" />
+            </div>
+            <span class="person-meta" style="font-size: 11px;">
+              El docente podrá iniciar sesión con este usuario, con su correo o con su documento.
+            </span>
+            <span class="error-msg" *ngIf="tieneError(docenteForm, 'codUsuario', 'pattern')">
+              Usa solo letras, números, puntos o guiones.
+            </span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">
+              Contraseña para la Plataforma
+              <span class="req" *ngIf="!docenteEditandoId">*</span>
+            </label>
+            <div
+              class="input-box"
+              style="display: flex; align-items: center;"
+              [class.input-error]="tieneError(docenteForm, 'clave', 'required') || tieneError(docenteForm, 'clave', 'minlength')">
+              <input
+                [type]="ocultarClaveDocente ? 'password' : 'text'"
+                formControlName="clave"
+                [placeholder]="docenteEditandoId ? 'Escribe nueva clave para asignar/cambiar (mín. 6)' : 'Contraseña de ingreso (mín. 6 caracteres)'"
+                style="flex: 1;" />
+              <button
+                type="button"
+                (click)="ocultarClaveDocente = !ocultarClaveDocente"
+                style="background: transparent; border: none; color: #64748b; cursor: pointer; display: flex; align-items: center; padding: 0 4px;">
+                <span class="material-icons" style="font-size: 18px;">
+                  {{ ocultarClaveDocente ? 'visibility_off' : 'visibility' }}
+                </span>
+              </button>
+            </div>
+            <span class="error-msg" *ngIf="tieneError(docenteForm, 'clave', 'required')">
+              Debes asignar una contraseña para que el docente pueda ingresar a la plataforma.
+            </span>
+            <span class="error-msg" *ngIf="tieneError(docenteForm, 'clave', 'minlength')">
+              La contraseña debe tener al menos 6 caracteres.
+            </span>
+          </div>
+        </div>
+
         <div class="modal-footer">
           <button type="button" class="btn-ghost" (click)="mostrarModalDocente = false">
             Cancelar
           </button>
           <button type="submit" class="btn-emerald" [disabled]="guardando">
             <span class="material-icons">save</span>
-            <span>{{ guardando ? 'Guardando...' : 'Guardar Docente' }}</span>
+            <span>{{ guardando ? 'Guardando...' : (docenteEditandoId ? 'Guardar y Actualizar Acceso' : 'Crear Docente y Habilitar Acceso') }}</span>
           </button>
         </div>
       </form>
