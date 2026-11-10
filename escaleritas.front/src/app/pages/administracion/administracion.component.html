@@ -347,6 +347,14 @@
               <td>
                 <div class="person-name">{{ doc.especialidad }}</div>
                 <div class="person-meta">{{ doc.tituloAcademico || 'Licenciado(a)' }}</div>
+                <div *ngIf="obtenerSalonDirigidoDocente(doc) as salonDir" style="margin-top: 4px;">
+                  <span
+                    class="status-pill"
+                    style="font-size: 11px; background: #fef3c7; color: #92400e; display: inline-flex; align-items: center; gap: 4px;">
+                    <span class="material-icons" style="font-size: 13px;">workspace_premium</span>
+                    <span>Directora de Grupo: {{ salonDir.nombre }}</span>
+                  </span>
+                </div>
               </td>
               <td>
                 <div class="assignment-chips" *ngIf="doc.asignaciones?.length; else sinCarga">
@@ -601,6 +609,7 @@
                     <input
                       type="time"
                       formControlName="horaInicioDescanso"
+                      (change)="recalcularFranjasSugeridasSalon(false)"
                       [min]="horaEntradaSalon(salon)"
                       [max]="horaSalidaSalon(salon)" />
                   </div>
@@ -612,6 +621,7 @@
                     <input
                       type="time"
                       formControlName="horaFinDescanso"
+                      (change)="recalcularFranjasSugeridasSalon(false)"
                       [min]="horaEntradaSalon(salon)"
                       [max]="horaSalidaSalon(salon)" />
                   </div>
@@ -664,8 +674,8 @@
                 <div class="input-box">
                   <select
                     formControlName="franjaIndex"
-                    (change)="alCambiarFranjaSalon($any($event.target).value)">
-                    <option *ngFor="let f of franjasSugeridasSalonActual; let i = index" [value]="i">
+                    (ngModelChange)="alCambiarFranjaSalon($event)">
+                    <option *ngFor="let f of franjasSugeridasSalonActual; let i = index; trackBy: trackByFranjaSalon" [ngValue]="i">
                       {{ f.etiqueta }}
                     </option>
                   </select>
@@ -1177,6 +1187,27 @@
           </div>
         </div>
 
+        <div class="section-divider">3. Dirección de Grupo (Titular de Salón)</div>
+        <div class="form-grid-2" style="align-items: center;">
+          <div class="field-group checkbox-group" style="margin: 0;">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="esDirectoraGrupo" />
+              <span>Designar como <strong>Directora de Grupo</strong> de este salón</span>
+            </label>
+          </div>
+
+          <div class="field-group" *ngIf="docenteForm.get('esDirectoraGrupo')?.value">
+            <label class="field-label">Salón de Clase que Dirige (Jardín a 5°) <span class="req">*</span></label>
+            <div class="input-box">
+              <select formControlName="cursoDirectoraId">
+                <option *ngFor="let c of cursos" [value]="c.id">
+                  {{ c.nombre }} - Grupo {{ c.grupo }} ({{ c.nivel }})
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div class="modal-footer">
           <button type="button" class="btn-ghost" (click)="mostrarModalDocente = false">
             Cancelar
@@ -1237,13 +1268,6 @@
             <div class="input-box">
               <input type="number" min="1" max="30" formControlName="intensidadHoraria" />
             </div>
-          </div>
-
-          <div class="field-group checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" formControlName="esTitularCurso" />
-              <span>Designar como <strong>Directora de Grupo</strong> de este salón</span>
-            </label>
           </div>
         </div>
 

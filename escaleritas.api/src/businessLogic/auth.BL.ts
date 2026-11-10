@@ -22,6 +22,19 @@ export interface RegisterRequestDTO {
   rolId?: string;
 }
 
+export interface ActualizarPerfilDTO {
+  nombres?: string;
+  apellidos?: string | null;
+  codUsuario?: string;
+  email?: string | null;
+  documento?: string | null;
+  telefono?: string | null;
+  tituloAcademico?: string | null;
+  claveActual?: string;
+  nuevaClave?: string;
+  confirmarClave?: string;
+}
+
 export interface AuthResponseDTO {
   ok: boolean;
   mensaje: string;
@@ -348,6 +361,11 @@ export const obtenerPerfilUsuarioBL = async (userId: string) => {
           },
         ],
       },
+      {
+        model: Docente,
+        as: 'perfilDocente',
+        required: false,
+      },
     ],
   });
 
@@ -356,6 +374,202 @@ export const obtenerPerfilUsuarioBL = async (userId: string) => {
   }
 
   return usuario.toJSON();
+};
+
+/**
+ * Permite al usuario autenticado editar los datos de su perfil y/o cambiar su contraseña
+ */
+export const actualizarMiPerfilBL = async (
+  userId: string,
+  dto: ActualizarPerfilDTO
+): Promise<AuthResponseDTO> => {
+  const usuario = await Usuario.findByPk(userId, {
+    include: [
+      {
+        model: Rol,
+        as: 'rol',
+        include: [
+          {
+            model: Permiso,
+            as: 'permisos',
+            through: { attributes: [] },
+          },
+        ],
+      },
+    ],
+  });
+
+  if (!usuario) {
+    throw new AppError('Usuario no encontrado', 404);
+  }
+
+  const camposActualizar: any = {};
+
+  if (dto.nombres !== undefined) {
+    if (!dto.nombres.trim()) {
+      throw new AppError('El nombre no puede estar vacío', 400);
+    }
+    camposActualizar.nombres = dto.nombres.trim();
+  }
+
+  if (dto.apellidos !== undefined) {
+    camposActualizar.apellidos = dto.apellidos?.trim() || null;
+  }
+
+  if (dto.codUsuario !== undefined) {
+    const nuevoCod = dto.codUsuario.trim();
+    if (nuevoCod.length < 3) {
+      throw new AppError('El código de usuario debe tener al menos 3 caracteres', 422);
+    }
+    const duplicadoCod = await Usuario.findOne({
+      where: {
+        id: { [Op.ne]: usuario.id },
+        [Op.and]: [
+          Sequelize.where(
+            Sequelize.fn('UPPER', Sequelize.col('codUsuario')),
+            nuevoCod.toUpperCase()
+          ),
+        ],
+      },
+    });
+    if (duplicadoCod) {
+      throw new AppError(
+        `El código de usuario "${nuevoCod}" ya está siendo utilizado por otra cuenta`,
+        409
+      );
+    }
+    camposActualizar.codUsuario = nuevoCod;
+  }
+
+  if (dto.email !== undefined) {
+    const nuevoEmail = dto.email?.trim().toLowerCase() || null;
+    if (nuevoEmail) {
+      const duplicadoEmail = await Usuario.findOne({
+        where: {
+          id: { [Op.ne]: usuario.id },
+          [Op.and]: [
+            Sequelize.where(
+              Sequelize.fn('UPPER', Sequelize.col('email')),
+              nuevoEmail.toUpperCase()
+            ),
+          ],
+        },
+      });
+      if (duplicadoEmail) {
+        throw new AppError(
+          `El correo electrónico "${nuevoEmail}" ya está registrado en otra cuenta`,
+          409
+        );
+      }
+    }
+    camposActualizar.email = nuevoEmail;
+  }
+
+  if (dto.documento !== undefined) {
+    const nuevoDoc = dto.documento?.trim() || null;
+    if (nuevoDoc) {
+      const duplicadoDoc = await Usuario.findOne({
+        where: {
+          id: { [Op.ne]: usuario.id },
+          documento: nuevoDoc,
+        },
+      });
+      if (duplicadoDoc) {
+        throw new AppError(
+          `El documento "${nuevoDoc}" ya está registrado en otra cuenta`,
+          409
+        );
+      }
+    }
+    camposActualizar.documento = nuevoDoc;
+  }
+
+  // Cambio de contraseña si el usuario envía nuevaClave
+  if (dto.nuevaClave && dto.nuevaClave.trim() !== '') {
+    if (!dto.claveActual || !dto.claveActual.trim()) {
+      throw new AppError(
+        'Debes ingresar tu contraseña actual para poder cambiarla',
+        400
+      );
+    }
+
+    const claveActualValida = await usuario.compararClave(dto.claveActual);
+    if (!claveActualValida) {
+      throw new AppError('La contraseña actual ingresada no es correcta', 401);
+    }
+
+    if (dto.nuevaClave.trim().length < 6) {
+      throw new AppError(
+        'La nueva contraseña debe tener al menos 6 caracteres',
+        422
+      );
+    }
+
+    if (
+      dto.confirmarClave !== undefined &&
+      dto.nuevaClave.trim() !== dto.confirmarClave.trim()
+    ) {
+      throw new AppError(
+        'La confirmación de la nueva contraseña no coincide',
+        422
+      );
+    }
+
+    const salt = await bcrypt.genSalt(config.bcryptSaltRounds);
+    camposActualizar.clave = await bcrypt.hash(dto.nuevaClave.trim(), salt);
+  }
+
+  await usuario.update(camposActualizar);
+
+  // Si el usuario tiene perfil en public.docente, mantener sincronizados sus datos básicos
+  const docenteVinculado = await Docente.findOne({
+    where: { usuarioId: usuario.id },
+  });
+  if (docenteVinculado) {
+    await docenteVinculado.update({
+      nombres: camposActualizar.nombres ?? docenteVinculado.nombres,
+      apellidos:
+        camposActualizar.apellidos !== undefined
+          ? camposActualizar.apellidos || docenteVinculado.apellidos
+          : docenteVinculado.apellidos,
+      email: camposActualizar.email ?? docenteVinculado.email,
+      documento: camposActualizar.documento ?? docenteVinculado.documento,
+      telefono:
+        dto.telefono !== undefined
+          ? dto.telefono?.trim() || null
+          : docenteVinculado.telefono,
+      tituloAcademico:
+        dto.tituloAcademico !== undefined
+          ? dto.tituloAcademico?.trim() || null
+          : docenteVinculado.tituloAcademico,
+    });
+  }
+
+  const usuarioActualizado = await Usuario.findByPk(usuario.id, {
+    include: [
+      {
+        model: Rol,
+        as: 'rol',
+        include: [
+          {
+            model: Permiso,
+            as: 'permisos',
+            through: { attributes: [] },
+          },
+        ],
+      },
+    ],
+  });
+
+  const mensajeRespuesta =
+    dto.nuevaClave && dto.nuevaClave.trim() !== ''
+      ? 'Contraseña y perfil actualizados correctamente'
+      : 'Datos de tu perfil actualizados correctamente';
+
+  return construirRespuestaAuth(
+    usuarioActualizado || usuario,
+    mensajeRespuesta
+  );
 };
 
 /**

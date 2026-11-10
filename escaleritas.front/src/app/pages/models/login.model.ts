@@ -37,6 +37,26 @@ export interface UsuarioAuthModel {
   estado: number;
   rol: RolModel;
   permisos: string[];
+  perfilDocente?: {
+    id: string;
+    codigoDocente: string;
+    especialidad: string;
+    telefono?: string | null;
+    tituloAcademico?: string | null;
+  } | null;
+}
+
+export interface ActualizarPerfilModel {
+  nombres?: string;
+  apellidos?: string | null;
+  codUsuario?: string;
+  email?: string | null;
+  documento?: string | null;
+  telefono?: string | null;
+  tituloAcademico?: string | null;
+  claveActual?: string;
+  nuevaClave?: string;
+  confirmarClave?: string;
 }
 
 export interface AuthResponseModel {

@@ -5,6 +5,7 @@ import { AdministracionComponent } from './administracion/administracion.compone
 import { MateriasComponent } from './materias/materias.component';
 import { DocentesPanelComponent } from './docentes-panel/docentes-panel.component';
 import { PortalEstudianteComponent } from './portal-estudiante/portal-estudiante.component';
+import { PerfilUsuarioComponent } from './perfil-usuario/perfil-usuario.component';
 import { pageRouting } from './pages-routing.module';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { AppMaterialModule } from '../app-material.module';
@@ -39,6 +40,7 @@ import { MatIconModule } from '@angular/material/icon';
     MateriasComponent,
     DocentesPanelComponent,
     PortalEstudianteComponent,
+    PerfilUsuarioComponent,
     SnackBarAnnotatedComponent,
   ],
   exports: [],

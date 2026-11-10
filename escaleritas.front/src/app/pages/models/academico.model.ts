@@ -118,6 +118,14 @@ export interface DocenteModel {
     email: string;
     estado: number;
   } | null;
+  cursosDirigidos?: {
+    id: string;
+    codigo: string;
+    nombre: string;
+    grado: string;
+    grupo: string;
+    nivel: string;
+  }[];
   asignaciones?: AsignacionDocenteModel[];
 }
 

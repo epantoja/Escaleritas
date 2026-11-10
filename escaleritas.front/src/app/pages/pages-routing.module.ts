@@ -5,6 +5,7 @@ import { AdministracionComponent } from './administracion/administracion.compone
 import { MateriasComponent } from './materias/materias.component';
 import { DocentesPanelComponent } from './docentes-panel/docentes-panel.component';
 import { PortalEstudianteComponent } from './portal-estudiante/portal-estudiante.component';
+import { PerfilUsuarioComponent } from './perfil-usuario/perfil-usuario.component';
 import { RolCodigo } from './models/login.model';
 
 export const routes: Routes = [
@@ -57,6 +58,21 @@ export const routes: Routes = [
     data: {
       pageTitle: 'Portal de Padres y Estudiantes: Materias, Notas y Horario',
       roles: ['ADMIN', 'PADRE_ESTUDIANTE', 'PADRE', 'ESTUDIANTE'] as RolCodigo[],
+    },
+  },
+  {
+    path: 'perfil',
+    component: PerfilUsuarioComponent,
+    canActivate: [AuthGuard],
+    data: {
+      pageTitle: 'Mi Perfil y Cambio de Contraseña',
+      roles: [
+        'ADMIN',
+        'DOCENTE',
+        'PADRE_ESTUDIANTE',
+        'PADRE',
+        'ESTUDIANTE',
+      ] as RolCodigo[],
     },
   },
 ];

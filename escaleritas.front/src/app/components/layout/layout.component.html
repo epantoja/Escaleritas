@@ -42,32 +42,105 @@
         <div class="user-avatar">
           {{ usuario.nombre?.charAt(0) || 'U' }}
         </div>
-        <div class="user-details">
+        <div class="user-details" style="flex: 1; min-width: 0;">
           <div class="user-fullname">{{ usuario.nombre }} {{ usuario.apellido }}</div>
           <div class="user-code">@{{ usuario.usuario }}</div>
         </div>
+        <a
+          routerLink="/pages/perfil"
+          (click)="menuAbiertoMovil = false; menuUsuarioAbierto = false"
+          class="user-profile-icon-btn"
+          title="Editar mi perfil y cambiar contraseña">
+          <span class="material-icons">manage_accounts</span>
+        </a>
       </div>
-      <button type="button" class="sidebar-logout" (click)="cerrarSesion()">
-        <span class="material-icons">logout</span>
-        <span>Cerrar Sesión</span>
-      </button>
+      <div class="sidebar-footer-actions">
+        <a
+          routerLink="/pages/perfil"
+          routerLinkActive="active"
+          (click)="menuAbiertoMovil = false; menuUsuarioAbierto = false"
+          class="sidebar-profile-btn">
+          <span class="material-icons">person</span>
+          <span>Mi Perfil</span>
+        </a>
+        <button type="button" class="sidebar-logout" (click)="cerrarSesion()">
+          <span class="material-icons">logout</span>
+          <span>Salir</span>
+        </button>
+      </div>
     </div>
   </aside>
 
   <!-- ÁREA DE CONTENIDO PRINCIPAL -->
   <div class="erp-main">
-    <!-- Barra móvil superior -->
-    <header class="mobile-header">
-      <button type="button" class="menu-toggle" (click)="menuAbiertoMovil = !menuAbiertoMovil">
-        <span class="material-icons">menu</span>
-      </button>
-      <span class="mobile-title">ERP Educativo Escaleritas</span>
-      <button type="button" class="mobile-logout" (click)="cerrarSesion()">
-        <span class="material-icons">logout</span>
-      </button>
+    <!-- Barra superior de usuario (Topbar con menú desplegable de perfil) -->
+    <header class="erp-topbar">
+      <div class="topbar-left">
+        <button type="button" class="menu-toggle" (click)="menuAbiertoMovil = !menuAbiertoMovil">
+          <span class="material-icons">menu</span>
+        </button>
+        <span class="topbar-brand">Colegio Escaleritas · Plataforma Académica</span>
+      </div>
+
+      <div class="topbar-user-area" *ngIf="usuario">
+        <button
+          type="button"
+          class="topbar-user-trigger"
+          (click)="menuUsuarioAbierto = !menuUsuarioAbierto">
+          <div class="topbar-avatar">
+            {{ usuario.nombre?.charAt(0) || 'U' }}
+          </div>
+          <div class="topbar-user-info">
+            <span class="topbar-user-name">{{ usuario.nombre }} {{ usuario.apellido }}</span>
+            <span class="topbar-user-role">{{ usuario.rolNombre || usuario.rol }} · @{{ usuario.usuario }}</span>
+          </div>
+          <span class="material-icons topbar-chevron">
+            {{ menuUsuarioAbierto ? 'expand_less' : 'expand_more' }}
+          </span>
+        </button>
+
+        <!-- Menú desplegable de cuenta de usuario -->
+        <div class="user-dropdown-menu" *ngIf="menuUsuarioAbierto">
+          <div class="dropdown-user-header">
+            <strong>{{ usuario.nombre }} {{ usuario.apellido }}</strong>
+            <span>@{{ usuario.usuario }} · {{ usuario.email || usuario.rolNombre }}</span>
+          </div>
+          <a
+            routerLink="/pages/perfil"
+            (click)="menuUsuarioAbierto = false"
+            class="dropdown-item">
+            <span class="material-icons">manage_accounts</span>
+            <div>
+              <strong>Editar Mi Perfil</strong>
+              <small>Datos personales y usuario de acceso</small>
+            </div>
+          </a>
+          <a
+            routerLink="/pages/perfil"
+            (click)="menuUsuarioAbierto = false"
+            class="dropdown-item">
+            <span class="material-icons">key</span>
+            <div>
+              <strong>Cambiar Contraseña</strong>
+              <small>Actualizar clave de seguridad</small>
+            </div>
+          </a>
+          <div class="dropdown-divider"></div>
+          <button
+            type="button"
+            (click)="menuUsuarioAbierto = false; cerrarSesion()"
+            class="dropdown-item dropdown-logout">
+            <span class="material-icons">logout</span>
+            <div>
+              <strong>Cerrar Sesión</strong>
+              <small>Salir de la plataforma</small>
+            </div>
+          </button>
+        </div>
+      </div>
     </header>
 
-    <div class="erp-content">
+    <div class="erp-content" (click)="menuUsuarioAbierto = false">
       <router-outlet></router-outlet>
     </div>
   </div>

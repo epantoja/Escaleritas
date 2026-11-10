@@ -3,6 +3,7 @@ import {
   loginController,
   registerController,
   meController,
+  actualizarPerfilController,
   rolesController,
 } from '../controller/auth.controller';
 import { verificaToken } from '../middlewares/autenticacion';
@@ -16,6 +17,7 @@ router.get('/roles', rolesController);
 
 // Endpoints protegidos por JWT
 router.get('/me', verificaToken, meController);
+router.put('/me', verificaToken, actualizarPerfilController);
 
 export default router;
 module.exports = router;

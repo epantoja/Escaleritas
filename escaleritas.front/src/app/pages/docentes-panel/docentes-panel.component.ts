@@ -38,6 +38,7 @@ export class DocentesPanelComponent implements OnInit {
   materias: MateriaModel[] = [];
   horariosDocente: HorarioClaseModel[] = [];
   salonHorarioFiltroId = '';
+  bloquesHoraDisponibles: BloqueHorarioConfig[] = [];
 
   salonCalificandoId = '';
   asignacionCalificando: AsignacionDocenteModel | null = null;
@@ -209,10 +210,11 @@ export class DocentesPanelComponent implements OnInit {
   }
 
   /**
-   * Devuelve los bloques horarios según la jornada del salón (7:30-12:00 para Jardín/Transición;
-   * 7:00-13:00 para 1° a 5°) y el descanso parametrizado del salón.
+   * Calcula y almacena los bloques horarios según la jornada del salón (7:30-12:00 para Jardín/Transición;
+   * 7:00-13:00 para 1° a 5°) y el descanso parametrizado del salón, manteniendo la referencia estable
+   * para que el <select> de Angular conserve la opción seleccionada.
    */
-  get bloquesHoraDisponibles(): BloqueHorarioConfig[] {
+  actualizarBloquesHoraDisponibles(reiniciarSeleccion = false): void {
     const entrada = this.horaEntradaSalonActivo;
     const salida = this.horaSalidaSalonActivo;
     const descIni = this.horaInicioDescansoSalonActivo;
@@ -227,16 +229,31 @@ export class DocentesPanelComponent implements OnInit {
       etiqueta: `${b.inicio} - ${b.fin} (${antes.length + i + 1}° Bloque - Post Descanso)`,
     }));
     const generados = [...antes, ...despues];
-    if (generados.length > 0) {
-      return generados;
+    this.bloquesHoraDisponibles =
+      generados.length > 0
+        ? generados
+        : this.esAsignacionPreescolar
+        ? [...this.bloquesTransicionPreescolar]
+        : [...this.bloquesPrimariaSuperiores];
+
+    const indiceActual = Number(this.horarioForm?.get('bloqueIndice')?.value ?? 0);
+    if (
+      reiniciarSeleccion ||
+      isNaN(indiceActual) ||
+      indiceActual < 0 ||
+      indiceActual >= this.bloquesHoraDisponibles.length
+    ) {
+      this.horarioForm?.patchValue({ bloqueIndice: 0 }, { emitEvent: false });
     }
-    return this.esAsignacionPreescolar
-      ? this.bloquesTransicionPreescolar
-      : this.bloquesPrimariaSuperiores;
+  }
+
+  trackByBloqueHorario(_index: number, item: BloqueHorarioConfig): string {
+    return `${item.inicio}-${item.fin}`;
   }
 
   onCambioAsignacionHorario(): void {
     const asig = this.asignacionHorarioSeleccionada;
+    this.actualizarBloquesHoraDisponibles(true);
     this.horarioForm.patchValue({
       bloqueIndice: 0,
       aula: asig?.curso?.aula || '',
@@ -251,6 +268,7 @@ export class DocentesPanelComponent implements OnInit {
           this.asignacionForm.patchValue({ cursoId: this.cursos[0].id });
         }
         this.actualizarCursosDirigidos();
+        this.actualizarBloquesHoraDisponibles(false);
       },
     });
 
@@ -321,6 +339,7 @@ export class DocentesPanelComponent implements OnInit {
         bloqueIndice: 0,
         aula: asignaciones[0].curso?.aula || '',
       });
+      this.actualizarBloquesHoraDisponibles(true);
       const salonExiste = asignaciones.some(
         (a) => a.cursoId === this.salonCalificandoId
       );
@@ -332,6 +351,7 @@ export class DocentesPanelComponent implements OnInit {
         asignaciones[0];
       this.seleccionarAsignacionParaCalificar(primeraDelSalon);
     } else {
+      this.actualizarBloquesHoraDisponibles(true);
       this.salonCalificandoId = '';
       this.asignacionCalificando = null;
       this.planillaNotas = [];
@@ -357,6 +377,7 @@ export class DocentesPanelComponent implements OnInit {
 
   cambiarFiltroSalonHorario(cursoId: string): void {
     this.salonHorarioFiltroId = cursoId;
+    this.actualizarBloquesHoraDisponibles(false);
     this.cargarHorariosDocente();
   }
 

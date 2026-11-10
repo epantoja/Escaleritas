@@ -40,6 +40,7 @@ export class AdministracionComponent implements OnInit {
   // Estado para el Horario Único por Salón
   salonHorarioSeleccionadoId = '';
   horariosSalonActual: HorarioClaseModel[] = [];
+  franjasSugeridasSalonActual: FranjaSalonSugerida[] = [];
   configSalonForm!: FormGroup;
   horarioSalonForm!: FormGroup;
 
@@ -129,6 +130,8 @@ export class AdministracionComponent implements OnInit {
         [Validators.minLength(3), Validators.maxLength(30), Validators.pattern(/^[a-zA-Z0-9._-]+$/)],
       ],
       clave: ['', [Validators.required, Validators.minLength(6)]],
+      esDirectoraGrupo: [false],
+      cursoDirectoraId: [''],
     });
 
     this.asignacionForm = this.fb.group({
@@ -337,6 +340,15 @@ export class AdministracionComponent implements OnInit {
     this.filtrarDocentes();
   }
 
+  obtenerSalonDirigidoDocente(
+    doc: DocenteModel
+  ): { id: string; nombre: string; grupo?: string } | undefined {
+    if (doc.cursosDirigidos && doc.cursosDirigidos.length > 0) {
+      return doc.cursosDirigidos[0];
+    }
+    return this.cursos.find((c) => c.directorDocenteId === doc.id);
+  }
+
   abrirModalNuevoDocente(): void {
     this.docenteEditandoId = null;
     this.ocultarClaveDocente = true;
@@ -349,6 +361,8 @@ export class AdministracionComponent implements OnInit {
       fechaIngreso: new Date().toISOString().slice(0, 10),
       codUsuario: '',
       clave: '',
+      esDirectoraGrupo: false,
+      cursoDirectoraId: this.cursos[0]?.id || '',
     });
     this.mostrarModalDocente = true;
   }
@@ -364,6 +378,9 @@ export class AdministracionComponent implements OnInit {
       doc.usuario?.codUsuario ||
       (doc.email ? doc.email.split('@')[0].toLowerCase() : '');
 
+    const salonDirigido = this.obtenerSalonDirigidoDocente(doc);
+    const primerCursoAsignadoId = doc.asignaciones?.[0]?.cursoId;
+
     this.docenteForm.patchValue({
       nombres: doc.nombres,
       apellidos: doc.apellidos,
@@ -376,6 +393,9 @@ export class AdministracionComponent implements OnInit {
       fechaIngreso: doc.fechaIngreso || '',
       codUsuario: sugeridoUsuario,
       clave: '',
+      esDirectoraGrupo: Boolean(salonDirigido),
+      cursoDirectoraId:
+        salonDirigido?.id || primerCursoAsignadoId || this.cursos[0]?.id || '',
     });
     this.mostrarModalDocente = true;
   }
@@ -569,14 +589,7 @@ export class AdministracionComponent implements OnInit {
       aula: salon.aula || 'Salón Principal',
     });
 
-    const franjas = this.franjasSugeridasSalonActual;
-    if (franjas.length > 0) {
-      this.horarioSalonForm.patchValue({
-        franjaIndex: 0,
-        horaInicio: franjas[0].horaInicio,
-        horaFin: franjas[0].horaFin,
-      });
-    }
+    this.recalcularFranjasSugeridasSalon(true);
   }
 
   cargarHorariosDelSalon(cursoId: string): void {
@@ -629,9 +642,10 @@ export class AdministracionComponent implements OnInit {
 
   /**
    * Genera dinámicamente las franjas horarias del salón respetando su hora de entrada/salida
-   * (Jardín/Transición: 07:30-12:00 | 1° a 5°: 07:00-13:00) y el descanso parametrizado del salón.
+   * (Jardín/Transición: 07:30-12:00 | 1° a 5°: 07:00-13:00) y el descanso parametrizado del salón,
+   * conservando la referencia del arreglo para que el <select> mantenga el ítem elegido.
    */
-  get franjasSugeridasSalonActual(): FranjaSalonSugerida[] {
+  recalcularFranjasSugeridasSalon(reiniciarIndice = false): void {
     const salon = this.salonHorarioActual;
     const entrada = this.horaEntradaSalon(salon);
     const salida = this.horaSalidaSalon(salon);
@@ -651,7 +665,30 @@ export class AdministracionComponent implements OnInit {
       etiqueta: `${antes.length + idx + 1}° Bloque (Después del descanso): ${b.horaInicio} - ${b.horaFin}`,
     }));
 
-    return [...antes, ...despues];
+    this.franjasSugeridasSalonActual = [...antes, ...despues];
+    const indiceActual = Number(this.horarioSalonForm?.get('franjaIndex')?.value ?? 0);
+    const idxFinal =
+      reiniciarIndice ||
+      isNaN(indiceActual) ||
+      indiceActual < 0 ||
+      indiceActual >= this.franjasSugeridasSalonActual.length
+        ? 0
+        : indiceActual;
+
+    if (this.franjasSugeridasSalonActual[idxFinal]) {
+      this.horarioSalonForm?.patchValue(
+        {
+          franjaIndex: idxFinal,
+          horaInicio: this.franjasSugeridasSalonActual[idxFinal].horaInicio,
+          horaFin: this.franjasSugeridasSalonActual[idxFinal].horaFin,
+        },
+        { emitEvent: false }
+      );
+    }
+  }
+
+  trackByFranjaSalon(_index: number, item: FranjaSalonSugerida): string {
+    return `${item.horaInicio}-${item.horaFin}`;
   }
 
   alCambiarFranjaSalon(indiceValor: any): void {
@@ -659,6 +696,7 @@ export class AdministracionComponent implements OnInit {
     const franjas = this.franjasSugeridasSalonActual;
     if (!isNaN(idx) && franjas[idx]) {
       this.horarioSalonForm.patchValue({
+        franjaIndex: idx,
         horaInicio: franjas[idx].horaInicio,
         horaFin: franjas[idx].horaFin,
       });

@@ -187,7 +187,7 @@
               <label>Franja Horaria <span class="req">*</span></label>
               <div class="input-box">
                 <select formControlName="bloqueIndice">
-                  <option *ngFor="let b of bloquesHoraDisponibles; let idx = index" [value]="idx">
+                  <option *ngFor="let b of bloquesHoraDisponibles; let idx = index; trackBy: trackByBloqueHorario" [ngValue]="idx">
                     {{ b.etiqueta }}
                   </option>
                 </select>

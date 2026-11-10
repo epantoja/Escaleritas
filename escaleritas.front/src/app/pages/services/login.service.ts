@@ -5,6 +5,7 @@ import { JwtHelperService } from '@auth0/angular-jwt';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
+  ActualizarPerfilModel,
   AuthResponseModel,
   LoginModel,
   RegisterModel,
@@ -61,6 +62,18 @@ export class LoginService {
     return this.http.get<{ ok: boolean; usuario: UsuarioAuthModel }>(
       `${this.baseUrl}api/auth/me`
     );
+  }
+
+  /**
+   * PUT /api/auth/me
+   * Actualiza los datos del usuario autenticado y/o su contraseña, renovando su JWT
+   */
+  actualizarMiPerfil(
+    datos: ActualizarPerfilModel
+  ): Observable<AuthResponseModel> {
+    return this.http
+      .put<AuthResponseModel>(`${this.baseUrl}api/auth/me`, datos)
+      .pipe(tap((respuesta) => this.guardarSesion(respuesta)));
   }
 
   /**

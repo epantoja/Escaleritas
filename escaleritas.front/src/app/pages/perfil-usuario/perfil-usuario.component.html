@@ -1,0 +1,218 @@
+<div class="profile-wrapper">
+  <!-- ENCABEZADO DEL PERFIL DE USUARIO -->
+  <div class="profile-banner">
+    <div class="profile-avatar-box">
+      <div class="profile-avatar">
+        {{ inicialesUsuario }}
+      </div>
+      <div>
+        <span class="role-pill">
+          <span class="material-icons" style="font-size: 14px;">verified_user</span>
+          <span>Rol Activo: {{ perfilCompleto?.rol?.nombre || infoJwt?.rolNombre || infoJwt?.rol }}</span>
+        </span>
+        <h1>{{ perfilForm.get('nombres')?.value || infoJwt?.nombre }} {{ perfilForm.get('apellidos')?.value || infoJwt?.apellido }}</h1>
+        <p>
+          Usuario de acceso: <strong>@{{ perfilForm.get('codUsuario')?.value || infoJwt?.usuario }}</strong>
+          <span *ngIf="perfilCompleto?.email"> · Correo: {{ perfilCompleto?.email }}</span>
+          <span *ngIf="perfilCompleto?.perfilDocente">
+            · Código Docente: <strong>{{ perfilCompleto?.perfilDocente?.codigoDocente }}</strong>
+          </span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRILLA DE 2 COLUMNAS: DATOS PERSONALES + CAMBIAR CONTRASEÑA -->
+  <div class="profile-grid">
+    <!-- TARJETA 1: EDITAR DATOS PERSONALES Y DE CUENTA -->
+    <section class="profile-card">
+      <div class="card-header">
+        <span class="material-icons icon-indigo">manage_accounts</span>
+        <div>
+          <h2>1. Información de Mi Perfil</h2>
+          <p>Actualiza tu nombre, correo electrónico, documento y código de usuario para ingresar a la plataforma.</p>
+        </div>
+      </div>
+
+      <form [formGroup]="perfilForm" (ngSubmit)="guardarDatosPerfil()" class="form-stack" novalidate>
+        <div class="grid-2">
+          <div class="field">
+            <label>Nombres <span class="req">*</span></label>
+            <div class="input-box" [class.input-error]="tieneError(perfilForm, 'nombres', 'required')">
+              <input type="text" formControlName="nombres" placeholder="Tus nombres" />
+            </div>
+            <span class="error-msg" *ngIf="tieneError(perfilForm, 'nombres', 'required')">
+              El nombre es obligatorio.
+            </span>
+          </div>
+
+          <div class="field">
+            <label>Apellidos</label>
+            <div class="input-box">
+              <input type="text" formControlName="apellidos" placeholder="Tus apellidos" />
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label>Código de Usuario (Login) <span class="req">*</span></label>
+            <div
+              class="input-box"
+              [class.input-error]="tieneError(perfilForm, 'codUsuario', 'required') || tieneError(perfilForm, 'codUsuario', 'pattern') || tieneError(perfilForm, 'codUsuario', 'minlength')">
+              <input type="text" formControlName="codUsuario" placeholder="Ej. usuario.nombre" />
+            </div>
+            <span class="hint">Puedes iniciar sesión con este usuario, tu correo o tu documento.</span>
+            <span class="error-msg" *ngIf="tieneError(perfilForm, 'codUsuario', 'required') || tieneError(perfilForm, 'codUsuario', 'minlength')">
+              El código de usuario debe tener al menos 3 caracteres.
+            </span>
+            <span class="error-msg" *ngIf="tieneError(perfilForm, 'codUsuario', 'pattern')">
+              Usa únicamente letras, números, puntos o guiones.
+            </span>
+          </div>
+
+          <div class="field">
+            <label>Número de Documento</label>
+            <div class="input-box">
+              <input type="text" formControlName="documento" placeholder="Ej. 1098765432" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Correo Electrónico</label>
+          <div class="input-box" [class.input-error]="tieneError(perfilForm, 'email', 'email')">
+            <input type="email" formControlName="email" placeholder="correo@escalerita.com" />
+          </div>
+          <span class="error-msg" *ngIf="tieneError(perfilForm, 'email', 'email')">
+            Ingresa un correo electrónico con formato válido.
+          </span>
+        </div>
+
+        <!-- Campos adicionales si el usuario logueado es Docente -->
+        <div class="grid-2" *ngIf="esDocente">
+          <div class="field">
+            <label>Teléfono / Celular</label>
+            <div class="input-box">
+              <input type="text" formControlName="telefono" placeholder="Ej. 3158901234" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Título Académico</label>
+            <div class="input-box">
+              <input type="text" formControlName="tituloAcademico" placeholder="Ej. Licenciada en Educación Básica" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-indigo" [disabled]="guardandoDatos">
+            <span class="material-icons">save</span>
+            <span>{{ guardandoDatos ? 'Guardando cambios...' : 'Guardar Datos de Mi Perfil' }}</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- TARJETA 2: CAMBIAR CONTRASEÑA DE ACCESO -->
+    <section class="profile-card">
+      <div class="card-header">
+        <span class="material-icons icon-emerald">lock_reset</span>
+        <div>
+          <h2>2. Cambiar Contraseña</h2>
+          <p>Por seguridad, ingresa tu contraseña actual y define una nueva contraseña de mínimo 6 caracteres.</p>
+        </div>
+      </div>
+
+      <form [formGroup]="claveForm" (ngSubmit)="cambiarContrasena()" class="form-stack" novalidate>
+        <div class="field">
+          <label>Contraseña Actual <span class="req">*</span></label>
+          <div
+            class="input-box input-with-btn"
+            [class.input-error]="tieneError(claveForm, 'claveActual', 'required')">
+            <input
+              [type]="ocultarClaveActual ? 'password' : 'text'"
+              formControlName="claveActual"
+              placeholder="Escribe tu contraseña actual" />
+            <button
+              type="button"
+              class="eye-btn"
+              (click)="ocultarClaveActual = !ocultarClaveActual">
+              <span class="material-icons">
+                {{ ocultarClaveActual ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+          <span class="error-msg" *ngIf="tieneError(claveForm, 'claveActual', 'required')">
+            Debes ingresar tu contraseña actual.
+          </span>
+        </div>
+
+        <div class="field">
+          <label>Nueva Contraseña <span class="req">*</span></label>
+          <div
+            class="input-box input-with-btn"
+            [class.input-error]="tieneError(claveForm, 'nuevaClave', 'required') || tieneError(claveForm, 'nuevaClave', 'minlength')">
+            <input
+              [type]="ocultarNuevaClave ? 'password' : 'text'"
+              formControlName="nuevaClave"
+              placeholder="Mínimo 6 caracteres" />
+            <button
+              type="button"
+              class="eye-btn"
+              (click)="ocultarNuevaClave = !ocultarNuevaClave">
+              <span class="material-icons">
+                {{ ocultarNuevaClave ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+          <span class="error-msg" *ngIf="tieneError(claveForm, 'nuevaClave', 'required')">
+            Ingresa la nueva contraseña.
+          </span>
+          <span class="error-msg" *ngIf="tieneError(claveForm, 'nuevaClave', 'minlength')">
+            La nueva contraseña debe tener al menos 6 caracteres.
+          </span>
+        </div>
+
+        <div class="field">
+          <label>Confirmar Nueva Contraseña <span class="req">*</span></label>
+          <div
+            class="input-box input-with-btn"
+            [class.input-error]="tieneError(claveForm, 'confirmarClave', 'required') || clavesNoCoinciden">
+            <input
+              [type]="ocultarConfirmarClave ? 'password' : 'text'"
+              formControlName="confirmarClave"
+              placeholder="Repite la nueva contraseña" />
+            <button
+              type="button"
+              class="eye-btn"
+              (click)="ocultarConfirmarClave = !ocultarConfirmarClave">
+              <span class="material-icons">
+                {{ ocultarConfirmarClave ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+          <span class="error-msg" *ngIf="clavesNoCoinciden">
+            Las contraseñas no coinciden.
+          </span>
+        </div>
+
+        <div class="security-tip">
+          <span class="material-icons">shield</span>
+          <span>
+            Tu contraseña se almacena encriptada con <strong>Bcrypt</strong>. Al actualizarla, tu sesión continuará activa automáticamente.
+          </span>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-emerald" [disabled]="guardandoClave">
+            <span class="material-icons">key</span>
+            <span>{{ guardandoClave ? 'Actualizando contraseña...' : 'Actualizar Contraseña' }}</span>
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+

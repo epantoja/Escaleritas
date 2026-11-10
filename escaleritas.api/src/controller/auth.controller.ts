@@ -3,6 +3,7 @@ import {
   loginUsuarioBL,
   registrarUsuarioBL,
   obtenerPerfilUsuarioBL,
+  actualizarMiPerfilBL,
   listarRolesActivosBL,
 } from '../businessLogic/auth.BL';
 import { AuthenticatedRequest } from '../middlewares/autenticacion';
@@ -79,6 +80,24 @@ export const meController = async (
       ok: true,
       usuario: perfil,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/auth/me
+ * Permite al usuario autenticado actualizar los datos de su perfil y/o cambiar su contraseña.
+ */
+export const actualizarPerfilController = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user?.user_id || req.userid;
+    const resultado = await actualizarMiPerfilBL(userId as string, req.body);
+    res.status(200).json(resultado);
   } catch (error) {
     next(error);
   }

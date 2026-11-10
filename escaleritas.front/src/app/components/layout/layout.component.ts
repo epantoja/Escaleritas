@@ -19,6 +19,7 @@ export interface MenuItemERP {
 export class LayoutComponent implements OnInit {
   usuario: InfoUsuarioModel | null = null;
   menuAbiertoMovil = false;
+  menuUsuarioAbierto = false;
 
   readonly itemsMenu: MenuItemERP[] = [
     {

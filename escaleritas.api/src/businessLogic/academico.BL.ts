@@ -100,6 +100,8 @@ export interface CrearDocenteDTO {
   codUsuario?: string;
   clave?: string;
   usuarioId?: string | null;
+  esDirectoraGrupo?: boolean;
+  cursoDirectoraId?: string | null;
   asignaciones?: AsignacionInputDTO[];
 }
 
@@ -708,6 +710,13 @@ export const listarDocentesBL = async (filtros: FiltroDocentesDTO) => {
         required: false,
       },
       {
+        model: Curso,
+        as: 'cursosDirigidos',
+        where: { estado: 1 },
+        required: false,
+        attributes: ['id', 'codigo', 'nombre', 'grado', 'grupo', 'nivel'],
+      },
+      {
         model: DocenteCursoMateria,
         as: 'asignaciones',
         where: whereAsignacion,
@@ -761,6 +770,13 @@ export const obtenerDocentePorIdBL = async (id: string) => {
         as: 'usuario',
         attributes: ['id', 'codUsuario', 'email', 'estado'],
         required: false,
+      },
+      {
+        model: Curso,
+        as: 'cursosDirigidos',
+        where: { estado: 1 },
+        required: false,
+        attributes: ['id', 'codigo', 'nombre', 'grado', 'grupo', 'nivel'],
       },
       {
         model: DocenteCursoMateria,
@@ -1065,6 +1081,28 @@ export const crearDocenteBL = async (dto: CrearDocenteDTO) => {
       }
     }
 
+    if (dto.esDirectoraGrupo && dto.cursoDirectoraId) {
+      await Curso.update(
+        { directorDocenteId: null },
+        { where: { directorDocenteId: nuevoDocente.id }, transaction: transaccion }
+      );
+      await Curso.update(
+        { directorDocenteId: nuevoDocente.id },
+        { where: { id: dto.cursoDirectoraId }, transaction: transaccion }
+      );
+      await DocenteCursoMateria.update(
+        { esTitularCurso: false },
+        { where: { cursoId: dto.cursoDirectoraId }, transaction: transaccion }
+      );
+      await DocenteCursoMateria.update(
+        { esTitularCurso: true },
+        {
+          where: { cursoId: dto.cursoDirectoraId, docenteId: nuevoDocente.id },
+          transaction: transaccion,
+        }
+      );
+    }
+
     await transaccion.commit();
     return obtenerDocentePorIdBL(nuevoDocente.id);
   } catch (error) {
@@ -1196,6 +1234,36 @@ export const actualizarDocenteBL = async (
       { transaction: transaccion }
     );
 
+    if (dto.esDirectoraGrupo !== undefined) {
+      // Limpiar cualquier salón donde esta docente era directora previamente
+      await Curso.update(
+        { directorDocenteId: null },
+        { where: { directorDocenteId: docente.id }, transaction: transaccion }
+      );
+      await DocenteCursoMateria.update(
+        { esTitularCurso: false },
+        { where: { docenteId: docente.id }, transaction: transaccion }
+      );
+
+      if (dto.esDirectoraGrupo && dto.cursoDirectoraId) {
+        await Curso.update(
+          { directorDocenteId: docente.id },
+          { where: { id: dto.cursoDirectoraId }, transaction: transaccion }
+        );
+        await DocenteCursoMateria.update(
+          { esTitularCurso: false },
+          { where: { cursoId: dto.cursoDirectoraId }, transaction: transaccion }
+        );
+        await DocenteCursoMateria.update(
+          { esTitularCurso: true },
+          {
+            where: { cursoId: dto.cursoDirectoraId, docenteId: docente.id },
+            transaction: transaccion,
+          }
+        );
+      }
+    }
+
     await transaccion.commit();
     return obtenerDocentePorIdBL(docente.id);
   } catch (error) {
@@ -1249,6 +1317,8 @@ export const asignarDocenteCursoMateriaBL = async (
   }
 
   const anioActual = new Date().getFullYear();
+  const esDirectoraDeEsteSalon =
+    Boolean(dto.esTitularCurso) || curso.directorDocenteId === docenteId;
 
   const [asignacion, creada] = await DocenteCursoMateria.findOrCreate({
     where: {
@@ -1263,7 +1333,7 @@ export const asignarDocenteCursoMateriaBL = async (
       materiaId: dto.materiaId,
       intensidadHoraria: Number(dto.intensidadHoraria) || materia.intensidadHoraria || 4,
       anioLectivo: anioActual,
-      esTitularCurso: Boolean(dto.esTitularCurso),
+      esTitularCurso: esDirectoraDeEsteSalon,
       estado: 1,
     },
   });
@@ -1271,7 +1341,7 @@ export const asignarDocenteCursoMateriaBL = async (
   if (!creada) {
     await asignacion.update({
       intensidadHoraria: Number(dto.intensidadHoraria) || asignacion.intensidadHoraria,
-      esTitularCurso: Boolean(dto.esTitularCurso),
+      esTitularCurso: esDirectoraDeEsteSalon,
       estado: 1,
     });
   }
